@@ -11,6 +11,7 @@
 | 2026-10-24 | 🥕 保卫萝卜（v3 卡通版） | [/carrot-defense/](https://jackqiang123.github.io/carrot-defense/) | 塔防：4 种炮塔、15 波、Boss 波、升级/出售、射程预览；v3 全手绘卡通角色（怪物/萝卜/炮塔），结算横幅与固定面板 |
 | 2026-10-24 | ⚡ 雷电 · Thunder Raiden（v2） | [/raiden/](https://jackqiang123.github.io/raiden/) | 纵版射击（致敬《雷电II》）：自动开火、红散射/紫电浆双武器、涟漪炸弹、火力 Lv8、3 大关 Boss、手机适配、WebAudio 合成音效与配乐 |
 | 2026-10-24 | 🎯 狙击外星人 | [/alien-sniper/](https://jackqiang123.github.io/alien-sniper/) | 找茬狙击：伪装外星人藏在公园/海滩/夜市，拖动镜头 + 开镜放大寻找，屏息稳枪，误伤惩罚，5 关 |
+| 2026-10-24 | 🔍 找不同 | [/spot-diff/](https://jackqiang123.github.io/spot-diff/) | 左右双图找茬：真实照片 + 程序现场在右图生成不同点（多一物/少一物/变一色），3 关 18 处，点按判定、提示、星级、放大 A/B 对比模式 |
 
 ## 更新节奏
 - 每天凌晨 3:00（太平洋时间）自动新增一个小游戏并更新本目录与主页卡片。
@@ -20,3 +21,4 @@
 - `carrot-defense/index.html` —— 保卫萝卜
 - `raiden/index.html` —— 雷电
 - `alien-sniper/index.html` —— 狙击外星人
+- `spot-diff/index.html` —— 找不同
