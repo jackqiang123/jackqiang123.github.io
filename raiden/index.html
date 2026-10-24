@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>雷电 · Thunder Raiden — 纵版射击</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:radial-gradient(1000px 600px at 50% -10%,#1b2a6b,#050914 70%);min-height:100vh;color:#dfe6e9}
+  .wrap{max-width:620px;margin:0 auto;padding:14px 10px 36px;text-align:center}
+  .back{color:#74b9ff;text-decoration:none;font-size:13px;float:left}
+  h1{font-size:30px;letter-spacing:6px;color:#fff;text-shadow:0 0 18px #0984e3,0 3px 0 #6c5ce7;margin:2px 0}
+  .sub{font-size:12px;color:#a5b8d3;letter-spacing:2px;margin-bottom:10px}
+  .hud{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0}
+  .chip{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:5px 10px;font-size:13px;font-weight:700}
+  .chip b{color:#ffeaa7}
+  .stage-card{background:#0b1226;border:2px solid #2d3a67;border-radius:14px;padding:8px;box-shadow:0 18px 50px rgba(0,0,0,.6)}
+  canvas{display:block;margin:0 auto;width:100%;max-width:540px;height:auto;background:#000;border-radius:6px;touch-action:none;cursor:crosshair}
+  .controls{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+  .btn{border:none;border-radius:999px;padding:10px 18px;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.35)}
+  .btn:active{transform:translateY(2px)}
+  .btn.red{background:#d63031;color:#fff}.btn.blue{background:#0984e3;color:#fff}.btn.grey{background:#636e72;color:#fff}
+  .tips{margin-top:12px;text-align:left;background:rgba(255,255,255,.06);border-radius:10px;padding:10px 14px;font-size:12.5px;line-height:1.9;color:#c8d4e5}
+  .overlay{position:fixed;inset:0;background:rgba(2,6,20,.72);display:none;align-items:center;justify-content:center;z-index:9}
+  .overlay.show{display:flex}
+  .dialog{background:#0d1530;border:2px solid #3c4a7d;border-radius:18px;padding:28px 36px;text-align:center;color:#fff;max-width:88vw}
+  .dialog h2{font-size:26px;letter-spacing:3px;margin-bottom:10px}
+  .dialog p{color:#a5b8d3;font-size:14px;line-height:1.8;margin-bottom:16px;white-space:pre-line}
+  footer{font-size:11px;color:#5f7194;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../">← 回主页</a>
+  <h1>⚡ 雷 电 ⚡</h1>
+  <div class="sub">THUNDER RAIDEN · 纵版射击 · 致敬街机《雷电II》玩法（原创代码与绘制，无原版素材）</div>
+  <div class="hud">
+    <div class="chip">SCORE <b id="score">0</b></div>
+    <div class="chip">HI <b id="hi">0</b></div>
+    <div class="chip">❤️ <b id="lives">3</b></div>
+    <div class="chip">💣 <b id="bombs">3</b></div>
+    <div class="chip">武器 <b id="weapon">红色散射 Lv1</b></div>
+    <div class="chip">STAGE <b id="stage">1</b></div>
+  </div>
+  <div class="stage-card">
+    <canvas id="game" width="540" height="720"></canvas>
+    <div class="controls">
+      <button class="btn red" id="startBtn">▶ 开始游戏（有声音 🔊）</button>
+      <button class="btn blue" id="bombBtn">💣 炸弹 X</button>
+      <button class="btn grey" id="pauseBtn">⏸ 暂停 P</button>
+      <button class="btn grey" id="muteBtn">🔊 声音 M</button>
+    </div>
+  </div>
+  <div class="tips">
+    <b>操作：</b>方向键 / WASD 移动（按住可精确慢移 Shift）；<b>Z 或 空格</b> 射击（按住连射，手机上拖动即自动射击）；<b>X</b> 炸弹（清屏+全屏伤害）；P 暂停，M 静音。<br>
+    <b>雷电的灵魂 —— 武器系统：</b>打掉红色运输机会掉道具。拾 <b style="color:#ff7675">红色 R</b> = 散射炮（越升级越宽）；拾 <b style="color:#74b9ff">蓝色 B</b> = 追踪激光（会拐弯的“牙膏激光”）；同色再拾 = 火力 +1（最高 Lv8）。拾 P 直接 +1，拾 💣 补炸弹。<br>
+    <b>关卡：</b>共 3 大关 —— ① 草原海岸（Boss：重型爆轰者）② 海洋舰队（Boss：深海战列舰）③ 机械要塞（Boss：要塞核心）。每关 Boss 前有 ⚠️ 警报。通关后进入更高难度的下一周目。<br>
+    <b>诀窍：</b>判定点只有机身中央的小核心，擦弹穿缝是街机味儿；阵亡火力 -3，复活有 3 秒无敌，别贪道具送命。
+  </div>
+  <footer>纯 HTML/JS + WebAudio 合成音效与配乐，无外部素材 · jackqiang123.github.io/raiden</footer>
+</div>
+<div class="overlay" id="overlay"><div class="dialog"><h2 id="ovTitle"></h2><p id="ovText"></p><button class="btn red" onclick="startGame()">再来一局</button></div></div>
+
+<script>
+"use strict";
+const W=540,H=720, canvas=document.getElementById('game'), ctx=canvas.getContext('2d');
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), rand=(a,b)=>a+Math.random()*(b-a), irand=(a,b)=>Math.floor(rand(a,b+1));
+const dist2=(a,b)=>{const dx=a.x-b.x,dy=a.y-b.y;return dx*dx+dy*dy};
+
+// ============ 音频：全部 WebAudio 合成，无音频文件 ============
+const AudioSys={
+  ctx:null,master:null,muted:false,bgmTimer:null,bgmStep:0,nextNoteTime:0,stageCfg:null,
+  init(){ if(this.ctx) { if(this.ctx.state==='suspended') this.ctx.resume(); return; }
+    const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
+    this.ctx=new AC(); this.master=this.ctx.createGain(); this.master.gain.value=0.5; this.master.connect(this.ctx.destination); },
+  tone(freq,dur,type,vol,slideTo,delay){ if(!this.ctx||this.muted) return; const t=this.ctx.currentTime+(delay||0);
+    const o=this.ctx.createOscillator(),g=this.ctx.createGain(); o.type=type||'square'; o.frequency.setValueAtTime(freq,t);
+    if(slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(slideTo,1),t+dur);
+    g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    o.connect(g); g.connect(this.master); o.start(t); o.stop(t+dur+0.02); },
+  noise(dur,vol,freq,delay){ if(!this.ctx||this.muted) return; const t=this.ctx.currentTime+(delay||0);
+    const len=Math.floor(this.ctx.sampleRate*dur), buf=this.ctx.createBuffer(1,len,this.ctx.sampleRate), d=buf.getChannelData(0);
+    for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*(1-i/len);
+    const src=this.ctx.createBufferSource(); src.buffer=buf;
+    const f=this.ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=freq||1000;
+    const g=this.ctx.createGain(); g.gain.value=vol;
+    src.connect(f); f.connect(g); g.connect(this.master); src.start(t); },
+  shot(){ this.tone(880,0.07,'square',0.05,220); },
+  laserTick(){ this.tone(rand(300,380),0.05,'sawtooth',0.035,180); },
+  explosion(big){ this.noise(big?0.7:0.3,big?0.5:0.25,big?700:1100); this.tone(big?120:160,big?0.6:0.25,'sine',big?0.5:0.2,40); },
+  powerup(){ [523,659,784,1047].forEach((f,i)=>this.tone(f,0.12,'square',0.12,null,i*0.06)); },
+  bombSound(){ this.noise(1.1,0.6,500); this.tone(200,1.0,'sine',0.6,30); this.tone(98,1.1,'triangle',0.5,24); },
+  playerDown(){ this.noise(0.9,0.5,800); [660,550,440,330,220].forEach((f,i)=>this.tone(f,0.16,'sawtooth',0.12,null,i*0.09)); },
+  warning(){ for(let i=0;i<4;i++){ this.tone(440,0.22,'square',0.14,null,i*0.46); this.tone(587,0.22,'square',0.14,null,i*0.46+0.23); } },
+  clearJingle(){ [523,523,523,659,784,1047,784,1047].forEach((f,i)=>this.tone(f,0.16,'square',0.13,null,i*0.11)); },
+  medal(){ this.tone(1568,0.09,'square',0.1); this.tone(2093,0.14,'square',0.1,null,0.07); },
+  // 简易 BGM 序列器：贝斯 + 主音 + 鼓，逐关变调式与速度
+  startBGM(cfg){ this.stopBGM(); if(!this.ctx) return; this.stageCfg=cfg; this.bgmStep=0; this.nextNoteTime=this.ctx.currentTime+0.06;
+    this.bgmTimer=setInterval(()=>this.schedule(),90); },
+  stopBGM(){ if(this.bgmTimer) clearInterval(this.bgmTimer); this.bgmTimer=null; },
+  schedule(){ if(!this.ctx||this.muted) return; const cfg=this.stageCfg; if(!cfg) return;
+    const spb=60/cfg.bpm/2; // 八分音符
+    while(this.nextNoteTime < this.ctx.currentTime + 0.22){
+      const step=this.bgmStep, delay=this.nextNoteTime-this.ctx.currentTime;
+      const bassNotes=cfg.bass, bass=bassNotes[step%bassNotes.length];
+      if(bass) this.tone(bass,spb*0.95,'triangle',0.16,null,delay);
+      const leadNotes=cfg.lead, lead=leadNotes[step%leadNotes.length];
+      if(lead && step%2===0) this.tone(lead,spb*1.6,'square',0.055,null,delay);
+      if(step%4===0) this.tone(120,0.14,'sine',0.30,45,delay);          // 底鼓
+      if(step%2===0) this.noise(0.03,0.05,6000,delay);                    // 踩镲
+      if(step%8===4) this.noise(0.09,0.10,1800,delay);                    // 军鼓
+      this.nextNoteTime+=spb; this.bgmStep++;
+    } }
+};
+
+// ============ 关卡配置 ============
+const STAGES=[
+  {name:"STAGE 1",sub:"草原海岸",theme:"grass",bpm:132,bass:[110,0,110,0,131,0,110,0,98,0,98,0,147,0,131,0],lead:[440,0,523,587,0,659,587,523,440,0,392,440,0,0,0,0],scroll:72,hpMul:1,bullet:135,bossName:"重型爆轰者「大黄蜂」",bossHp:1500},
+  {name:"STAGE 2",sub:"海洋舰队",theme:"sea",bpm:142,bass:[98,0,98,0,117,0,98,0,87,0,87,0,131,0,117,0],lead:[392,0,466,523,0,622,523,466,392,0,349,392,0,466,0,0],scroll:84,hpMul:1.55,bullet:158,bossName:"深海战列舰「玄武」",bossHp:2300},
+  {name:"STAGE 3",sub:"机械要塞",theme:"base",bpm:154,bass:[87,0,87,87,0,104,0,87,0,82,0,82,0,123,0,104,0],lead:[349,0,415,466,0,523,466,415,349,311,0,349,0,415,0,0],scroll:96,hpMul:2.2,bullet:182,bossName:"要塞核心「天王」",bossHp:3400},
+];
+
+// ============ 游戏状态 ============
+let player,bullets,lasers,missiles,enemies,ebullets,items,parts,floats,decor;
+let score,hi=+(localStorage.getItem('raiden_hi')||0),lives,bombsLeft,stageIdx,loopCount,stageTime,state,paused,shake,flash,spawnT,bossRef,warningT,respawnT,stageClearT,groundScroll;
+let keys={},touchMove=null;
+function resetGame(){ score=0; lives=3; bombsLeft=3; stageIdx=0; loopCount=0; startStage(0); state='playing'; }
+function startStage(idx){
+  const cfg=STAGES[idx];
+  player={x:W/2,y:H-110,r:11,weapon:'red',power:1,fireT:0,missileT:0,invuln:3,dead:false,laserSndT:0};
+  bullets=[]; lasers=[]; missiles=[]; enemies=[]; ebullets=[]; items=[]; parts=[]; floats=[];
+  decor=[]; for(let i=0;i<26;i++) decor.push(newDecor(true));
+  stageTime=0; spawnT=1.2; bossRef=null; warningT=0; respawnT=0; stageClearT=0; groundScroll=0; shake=0; flash=0;
+  banner(cfg.name+' · '+cfg.sub, cfg.bossName?'敌主力：'+cfg.bossName:'');
+  AudioSys.startBGM(cfg);
+  updateHUD();
+}
+function newDecor(anyY){ const cfg=STAGES[stageIdx]; const kinds={grass:['tree','tree','rock','field','coast'],sea:['wave','wave','island','shipwreck'],base:['crater','building','runway','crater']}[cfg.theme];
+  return {x:rand(0,W),y:anyY?rand(0,H):-40,kind:kinds[irand(0,kinds.length-1)],s:rand(0.7,1.5)}; }
+let bannerText=null,bannerSub='',bannerT=0;
+function banner(t,s){ bannerText=t; bannerSub=s||''; bannerT=2.6; }
+function addFloat(x,y,text,color){ floats.push({x,y,text,color,life:1}); }
+function addParts(x,y,color,n,spd){ for(let i=0;i<(n||12);i++){ const a=rand(0,Math.PI*2),s=rand(30,spd||170); parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(.3,.8),color,r:rand(1.5,3.5)}); } }
+function addScore(n,x,y){ score+=n; if(x!==undefined) addFloat(x,y,'+'+n,'#ffeaa7'); if(score>hi){ hi=score; localStorage.setItem('raiden_hi',hi); } updateHUD(); }
+
+// ============ 输入 ============
+addEventListener('keydown',e=>{ keys[e.code]=true;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+  if(e.code==='KeyX') useBomb();
+  if(e.code==='KeyP') togglePause();
+  if(e.code==='KeyM') toggleMute();
+  if((e.code==='Enter'||e.code==='Space') && state!=='playing') startGame();
+});
+addEventListener('keyup',e=>{ keys[e.code]=false; });
+function canvasPos(e){ const r=canvas.getBoundingClientRect(); const t=e.touches?e.touches[0]:e; return {x:(t.clientX-r.left)*W/r.width, y:(t.clientY-r.top)*H/r.height}; }
+canvas.addEventListener('touchstart',e=>{ e.preventDefault(); touchMove=canvasPos(e); },{passive:false});
+canvas.addEventListener('touchmove',e=>{ e.preventDefault(); touchMove=canvasPos(e); },{passive:false});
+canvas.addEventListener('touchend',e=>{ touchMove=null; });
+canvas.addEventListener('mousedown',e=>{ touchMove=canvasPos(e); });
+canvas.addEventListener('mousemove',e=>{ if(touchMove) touchMove=canvasPos(e); });
+canvas.addEventListener('mouseup',()=>{ touchMove=null; });
+
+// ============ 敌机生成 ============
+const BOSS_TIME=70;
+function spawnEnemy(type,x,y,opts){
+  const cfg=STAGES[stageIdx], m=cfg.hpMul*Math.pow(1.35,loopCount);
+  const base={type,x,y,t:rand(0,9),dead:false,ground:false,fireT:rand(1,2.4),score:100};
+  if(type==='pop') Object.assign(base,{hp:6*m,r:14,vy:150,score:100});
+  else if(type==='dart') Object.assign(base,{hp:4*m,r:11,vy:265,score:150});
+  else if(type==='tank') Object.assign(base,{hp:24*m,r:16,ground:true,score:300});
+  else if(type==='turret') Object.assign(base,{hp:18*m,r:14,ground:true,score:250});
+  else if(type==='mid') Object.assign(base,{hp:42*m,r:21,vy:90,score:500,phase:'enter'});
+  else if(type==='bomber') Object.assign(base,{hp:130*m,r:32,vy:44,score:1000});
+  else if(type==='carrier') Object.assign(base,{hp:16*m,r:16,vy:105,score:200,drop:(opts&&opts.drop)||'pow'});
+  base.maxHp=base.hp;
+  enemies.push(base); return base;
+}
+function spawnPattern(){
+  const cfg=STAGES[stageIdx], t=stageTime, roll=Math.random();
+  const diff=1+stageIdx*0.35+loopCount*0.5;
+  if(roll<0.30){ const x0=rand(50,W-150); for(let i=0;i<5;i++) setTimeout(()=>{},0), spawnEnemy('pop',x0+i*26,-30-i*34); }
+  else if(roll<0.48){ const fromLeft=Math.random()<0.5; for(let i=0;i<4;i++) spawnEnemy('dart',fromLeft?40+i*8:W-40-i*8,-40-i*46); enemies.slice(-4).forEach(e=>e.vx=(fromLeft?55:-55)); }
+  else if(roll<0.62){ spawnEnemy('tank',rand(50,W-50),-30); if(Math.random()<0.6) spawnEnemy('turret',rand(50,W-50),-90); }
+  else if(roll<0.76){ spawnEnemy('mid',rand(90,W-90),-40); }
+  else if(roll<0.86 && t>18){ spawnEnemy('bomber',rand(110,W-110),-50); }
+  else { const drops=['red','blue','pow','bomb','red','blue']; spawnEnemy('carrier',rand(60,W-60),-30,{drop:drops[irand(0,drops.length-1)]}); }
+  spawnT=Math.max(0.75, rand(1.5,2.3)/diff);
+}
+function spawnBoss(){
+  const cfg=STAGES[stageIdx];
+  const hp=cfg.bossHp*Math.pow(1.4,loopCount);
+  const turretDefs = stageIdx===0 ? [{dx:-70,dy:26},{dx:70,dy:26}] : stageIdx===1 ? [{dx:-52,dy:-6},{dx:52,dy:-6},{dx:0,dy:44}] : [{dx:-78,dy:10},{dx:78,dy:10},{dx:-38,dy:52},{dx:38,dy:52}];
+  bossRef={type:'boss',x:W/2,y:-80,r:58,hp:hp,maxHp:hp,t:0,fireT:2,fireT2:3,dead:false,score:10000,ground:false,
+    turrets:turretDefs.map(d=>({dx:d.dx,dy:d.dy,hp:hp*0.16,maxHp:hp*0.16,r:16,fireT:rand(1,2),dead:false}))};
+  enemies.push(bossRef);
+  banner('⚠ WARNING ⚠', cfg.bossName+' 接近中！');
+  AudioSys.warning();
+}
+function dropItem(x,y,kind){ items.push({x,y,kind,t:0,vy:85,vx:rand(-16,16)}); }
+function enemyShoot(e,speed,angle,spread){
+  const cfg=STAGES[stageIdx]; const a=angle!==undefined?angle:Math.atan2(player.y-e.y,player.x-e.x);
+  const n=spread||1;
+  for(let i=0;i<n;i++){ const aa=a+(n>1?(i-(n-1)/2)*0.22:0); ebullets.push({x:e.x,y:e.y,vx:Math.cos(aa)*(speed||cfg.bullet),vy:Math.sin(aa)*(speed||cfg.bullet),r:4}); }
+}
+
+// ============ 炸弹 / 受击 ============
+function useBomb(){
+  if(state!=='playing'||paused||!player||player.dead||bombsLeft<=0) return;
+  bombsLeft--; flash=1; shake=14; AudioSys.bombSound();
+  for(const e of enemies){ if(e.type==='boss'){ damageEnemy(e,650); e.turrets.forEach(t=>{ if(!t.dead) t.hp-=260; if(t.hp<=0&&!t.dead){t.dead=true; addScore(500);} }); } else damageEnemy(e,9999); }
+  ebullets=[]; addFloat(player.x,player.y-50,'BOMB!!','#ffeaa7'); updateHUD();
+}
+function damageEnemy(e,dmg){
+  if(e.dead) return; e.hp-=dmg; e.flashT=0.06;
+  if(e.hp<=0){ killEnemy(e); }
+}
+function killEnemy(e){
+  if(e.dead) return; e.dead=true;
+  const big=e.type==='bomber'||e.type==='boss';
+  AudioSys.explosion(big); addParts(e.x,e.y, e.type==='tank'||e.type==='turret' ? '#fdcb6e' : '#ff7675', big?36:13, big?260:180);
+  if(e.type==='boss'){ onBossDown(e); return; }
+  addScore(e.score,e.x,e.y);
+  if(e.type==='carrier') dropItem(e.x,e.y,e.drop);
+  else if(e.type==='bomber') dropItem(e.x,e.y,Math.random()<0.5?'pow':'medal');
+  else if((e.type==='tank'||e.type==='turret') && Math.random()<0.18) dropItem(e.x,e.y,'medal');
+}
+function onBossDown(e){
+  addScore(e.score,e.x,e.y); flash=0.9; shake=18; ebullets=[];
+  for(let i=0;i<5;i++) addParts(e.x+rand(-60,60),e.y+rand(-30,30),'#fdcb6e',22,280);
+  AudioSys.explosion(true); AudioSys.clearJingle();
+  bossRef=null; stageClearT=2.8; AudioSys.stopBGM();
+}
+function playerHit(){
+  if(player.invuln>0||player.dead) return;
+  player.dead=true; respawnT=1.4; AudioSys.playerDown(); addParts(player.x,player.y,'#74b9ff',34,280); shake=10;
+  lives--; player.power=Math.max(1,player.power-3); updateHUD();
+  if(lives<0){ gameOver(false); }
+}
+function gameOver(win){
+  state= win? 'win':'over'; AudioSys.stopBGM();
+  document.getElementById('ovTitle').textContent= win?'🎉 全关制霸！':'GAME OVER';
+  document.getElementById('ovText').textContent=(win?'3 大关全部击破，进入下一周目只会更难。\n':'')+`最终分数 ${score}\n最高纪录 ${hi}\n到达 STAGE ${stageIdx+1} · 第 ${loopCount+1} 周目`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+// ============ 主更新 ============
+function update(dt){
+  const cfg=STAGES[stageIdx];
+  stageTime+=dt; groundScroll=(groundScroll+cfg.scroll*dt)%72;
+  if(bannerT>0) bannerT-=dt;
+  if(flash>0) flash-=dt*1.6; if(shake>0) shake=Math.max(0,shake-dt*22);
+  // 背景装饰随地面滚动
+  for(const d of decor){ d.y+=cfg.scroll*dt; if(d.y>H+50){ Object.assign(d,newDecor(false)); } }
+  // 关卡推进
+  if(stageClearT>0){ stageClearT-=dt; if(stageClearT<=0){ stageIdx++; if(stageIdx>=STAGES.length){ loopCount++; stageIdx=0; startStage(0); banner('🎉 全关制霸！进入第 '+(loopCount+1)+' 周目','敌人火力强化，继续战斗！'); return; } startStage(stageIdx); return; } }
+  else if(!bossRef && stageTime>=BOSS_TIME && warningT<=0){ warningT=0.01; spawnBoss(); }
+  else if(!bossRef && stageTime<BOSS_TIME){ spawnT-=dt; if(spawnT<=0) spawnPattern(); }
+  // 玩家
+  if(player.dead){ respawnT-=dt; if(respawnT<=0 && lives>=0){ player.dead=false; player.x=W/2; player.y=H-110; player.invuln=3; } }
+  else {
+    let dx=0,dy=0; const slow=keys['ShiftLeft']||keys['ShiftRight'];
+    if(keys['ArrowLeft']||keys['KeyA']) dx-=1; if(keys['ArrowRight']||keys['KeyD']) dx+=1;
+    if(keys['ArrowUp']||keys['KeyW']) dy-=1; if(keys['ArrowDown']||keys['KeyS']) dy+=1;
+    const sp= slow?165:330;
+    if(dx||dy){ const l=Math.hypot(dx,dy); player.x+=dx/l*sp*dt; player.y+=dy/l*sp*dt; }
+    if(touchMove){ player.x+=(touchMove.x-player.x)*Math.min(1,dt*14); player.y+=((touchMove.y-56)-player.y)*Math.min(1,dt*14); }
+    player.x=clamp(player.x,20,W-20); player.y=clamp(player.y,40,H-24);
+    if(player.invuln>0) player.invuln-=dt;
+    const firing = keys['KeyZ']||keys['Space']||!!touchMove;
+    player.fireT-=dt; player.missileT-=dt;
+    if(firing) fireWeapons(dt);
+    // 导弹副武器
+    if(firing && player.missileT<=0 && ((player.weapon==='red'&&player.power>=3)||(player.weapon==='blue'&&player.power>=2))){
+      player.missileT=0.5;
+      const side=missiles.length%2? 1:-1;
+      missiles.push({x:player.x+side*16,y:player.y+6,vx:side*60,vy:-120,r:6,dmg:20+player.power*3,turn:4.2});
+    }
+  }
+  // 子弹（红色散射）
+  for(const b of bullets){ b.x+=b.vx*dt; b.y+=b.vy*dt; if(b.y<-24||b.x<-24||b.x>W+24) b.gone=true; }
+  // 蓝激光段（牙膏激光：每段向前飞并转向最近的敌机）
+  for(const s of lasers){
+    let tgt=null,bd=1e12;
+    for(const e of enemies){ if(e.dead||e.ground) continue; const d=dist2(s,e); if(d<bd){bd=d;tgt=e;} }
+    if(tgt){ const want=Math.atan2(tgt.y-s.y,tgt.x-s.x); let cur=Math.atan2(s.vy,s.vx); let diff=want-cur; while(diff>Math.PI)diff-=Math.PI*2; while(diff<-Math.PI)diff+=Math.PI*2; cur+=clamp(diff,-5.5*dt,5.5*dt); const spd=920; s.vx=Math.cos(cur)*spd; s.vy=Math.sin(cur)*spd; }
+    s.x+=s.vx*dt; s.y+=s.vy*dt; s.life-=dt; if(s.life<=0||s.y<-30||s.x<-30||s.x>W+30) s.gone=true;
+  }
+  // 导弹
+  for(const ms of missiles){
+    let tgt=null,bd=1e12; for(const e of enemies){ if(e.dead) continue; const d=dist2(ms,e); if(d<bd){bd=d;tgt=e;} }
+    if(tgt){ const want=Math.atan2(tgt.y-ms.y,tgt.x-ms.x); let cur=Math.atan2(ms.vy,ms.vx); let diff=want-cur; while(diff>Math.PI)diff-=Math.PI*2; while(diff<-Math.PI)diff+=Math.PI*2; cur+=clamp(diff,-ms.turn*dt,ms.turn*dt); const spd=430; ms.vx=Math.cos(cur)*spd; ms.vy=Math.sin(cur)*spd; }
+    ms.x+=ms.vx*dt; ms.y+=ms.vy*dt; ms.life=(ms.life||2.4)-dt; if(ms.life<=0||ms.y<-30||ms.x<-30||ms.x>W+30||ms.y>H+30) ms.gone=true;
+    if(Math.random()<0.6) parts.push({x:ms.x,y:ms.y+8,vx:rand(-12,12),vy:rand(20,60),life:.3,color:'#dfe6e9',r:1.8});
+  }
+  // 敌机
+  for(const e of enemies){
+    if(e.dead) continue; e.t+=dt; if(e.flashT>0) e.flashT-=dt;
+    const scroll=cfg.scroll;
+    if(e.type==='pop'){ e.y+=e.vy*dt; e.x+=Math.sin(e.t*3.1)*36*dt; }
+    else if(e.type==='dart'){ e.y+=e.vy*dt; e.x+=(e.vx||0)*dt; }
+    else if(e.type==='tank'||e.type==='turret'){ e.y+=scroll*dt; e.fireT-=dt; if(e.fireT<=0&&e.y>0&&e.y<H-160&&!player.dead){ e.fireT=e.type==='tank'?2.7:2.2; enemyShoot(e); } }
+    else if(e.type==='mid'){ if(e.phase==='enter'){ e.y+=e.vy*dt; if(e.y>130) e.phase='strafe'; } else { e.x+=Math.sin(e.t*1.4)*85*dt; e.y+=Math.sin(e.t*0.9)*22*dt; } e.fireT-=dt; if(e.fireT<=0&&e.phase==='strafe'){ e.fireT=2.0; enemyShoot(e,undefined,undefined,3); } if(e.t>16) e.y+=70*dt; }
+    else if(e.type==='bomber'){ e.y+=e.vy*dt; e.fireT-=dt; if(e.fireT<=0&&e.y>40){ e.fireT=2.6; enemyShoot(e,undefined,undefined,5); } }
+    else if(e.type==='carrier'){ e.y+=e.vy*dt; e.x+=Math.sin(e.t*2)*26*dt; }
+    else if(e.type==='boss'){
+      if(e.y<118) e.y+=56*dt; else { e.x=W/2+Math.sin(e.t*0.55)*(stageIdx===2?130:95); e.y=118+Math.sin(e.t*0.8)*16; }
+      e.fireT-=dt; if(e.fireT<=0&&e.y>0){ e.fireT= stageIdx===2?1.5:1.9; enemyShoot(e,cfg.bullet*1.05,undefined, stageIdx===0?3:5); }
+      e.fireT2-=dt; if(e.fireT2<=0){ e.fireT2=4.2; if(e.hp<e.maxHp*0.35){ for(let i=0;i<14;i++){ const a=i/14*Math.PI*2+e.t; ebullets.push({x:e.x,y:e.y+20,vx:Math.cos(a)*cfg.bullet*0.8,vy:Math.sin(a)*cfg.bullet*0.8,r:4}); } } }
+      for(const t of e.turrets){ if(t.dead) continue; t.fireT-=dt; const tx=e.x+t.dx,ty=e.y+t.dy; if(t.fireT<=0&&e.y>0){ t.fireT=rand(1.7,2.5); const a=Math.atan2(player.y-ty,player.x-tx); ebullets.push({x:tx,y:ty,vx:Math.cos(a)*cfg.bullet,vy:Math.sin(a)*cfg.bullet,r:4}); } }
+    }
+    if(e.y>H+70||e.x<-80||e.x>W+80) e.dead=true, e.silent=true;
+    // 撞机
+    if(!player.dead && player.invuln<=0 && !e.ground){ const rr=e.r+player.r-3; if(dist2(e,player)<rr*rr){ damageEnemy(e,40); playerHit(); } }
+  }
+  // 命中判定
+  function hitEnemyAt(x,y,r,dmg,isLaser){
+    for(const e of enemies){ if(e.dead) continue;
+      if(e.type==='boss'){ for(const t of e.turrets){ if(t.dead) continue; const tx=e.x+t.dx,ty=e.y+t.dy; if((x-tx)**2+(y-ty)**2 < (t.r+r)**2){ t.hp-=dmg; addParts(x,y,'#ffeaa7',2,90); if(t.hp<=0){ t.dead=true; addScore(500,tx,ty); AudioSys.explosion(false); addParts(tx,ty,'#ff7675',16,200);} return true; } }
+        if((x-e.x)**2+(y-e.y)**2 < (e.r+r)**2){ damageEnemy(e,dmg); return true; } continue; }
+      if((x-e.x)**2+(y-e.y)**2 < (e.r+r)**2){ damageEnemy(e,dmg); if(!isLaser) addParts(x,y,'#ffeaa7',2,80); return true; }
+    } return false;
+  }
+  for(const b of bullets){ if(b.gone) continue; if(hitEnemyAt(b.x,b.y,5,b.dmg)) b.gone=true; }
+  for(const s of lasers){ if(s.gone) continue; if(hitEnemyAt(s.x,s.y,13,s.dmg)) { s.gone=true; } }
+  for(const ms of missiles){ if(ms.gone) continue; if(hitEnemyAt(ms.x,ms.y,9,ms.dmg)){ ms.gone=true; AudioSys.explosion(false); addParts(ms.x,ms.y,'#fdcb6e',10,150);} }
+  bullets=bullets.filter(b=>!b.gone); lasers=lasers.filter(s=>!s.gone); missiles=missiles.filter(m=>!m.gone);
+  enemies=enemies.filter(e=>!e.dead);
+  // 敌弹
+  for(const b of ebullets){ b.x+=b.vx*dt; b.y+=b.vy*dt; if(b.y<-20||b.y>H+20||b.x<-20||b.x>W+20) b.gone=true;
+    if(!player.dead&&player.invuln<=0){ if(dist2(b,player)<(4+6)**2){ b.gone=true; playerHit(); } } }
+  ebullets=ebullets.filter(b=>!b.gone);
+  // 道具
+  for(const it of items){ it.t+=dt; it.y+=it.vy*dt; it.x+=it.vx*dt+Math.sin(it.t*3)*18*dt; if(it.x<16)it.vx=Math.abs(it.vx); if(it.x>W-16)it.vx=-Math.abs(it.vx);
+    if(it.y>H+24) it.gone=true;
+    if(!player.dead && Math.abs(it.x-player.x)<30 && Math.abs(it.y-player.y)<32){ it.gone=true; pickup(it); } }
+  items=items.filter(i=>!i.gone);
+  // 粒子/漂字
+  for(const p of parts){ p.x+=p.vx*dt; p.y+=p.vy*dt; p.life-=dt; } parts=parts.filter(p=>p.life>0);
+  for(const f of floats){ f.y-=36*dt; f.life-=dt*0.75; } floats=floats.filter(f=>f.life>0);
+}
+function fireWeapons(dt){
+  const p=player;
+  if(p.weapon==='red'){
+    if(p.fireT>0) return; p.fireT=0.115; AudioSys.shot();
+    const lv=p.power, dmg=7+lv*1.6, spd=660;
+    const shots=[0];
+    if(lv>=2) shots.push(-1,1); if(lv>=4) shots.push(-2,2); if(lv>=6) shots.push(-3,3); if(lv>=8) shots.push(-4,4);
+    for(const s of shots){ const a=-Math.PI/2 + s*0.085; bullets.push({x:p.x+s*5,y:p.y-14,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,dmg:dmg*(s===0?1:0.8)}); }
+  } else {
+    // 蓝激光：持续吐出可转向的激光段
+    p.laserSndT-=dt; if(p.laserSndT<=0){ p.laserSndT=0.09; AudioSys.laserTick(); }
+    p._laserAcc=(p._laserAcc||0)+dt;
+    while(p._laserAcc>0.016){ p._laserAcc-=0.016; lasers.push({x:p.x+rand(-3,3),y:p.y-16,vx:0,vy:-920,dmg:1.1+p.power*0.55,life:0.85}); }
+  }
+}
+function pickup(it){
+  const p=player; AudioSys.powerup();
+  if(it.kind==='red'){ if(p.weapon==='red') p.power=Math.min(8,p.power+1); else { p.weapon='red'; } addFloat(p.x,p.y-34,'红色散射! Lv'+p.power,'#ff7675'); }
+  else if(it.kind==='blue'){ if(p.weapon==='blue') p.power=Math.min(8,p.power+1); else { p.weapon='blue'; } addFloat(p.x,p.y-34,'蓝色激光! Lv'+p.power,'#74b9ff'); }
+  else if(it.kind==='pow'){ p.power=Math.min(8,p.power+1); addFloat(p.x,p.y-34,'POWER UP! Lv'+p.power,'#ffeaa7'); }
+  else if(it.kind==='bomb'){ bombsLeft=Math.min(6,bombsLeft+1); addFloat(p.x,p.y-34,'炸弹 +1','#55efc4'); }
+  else if(it.kind==='medal'){ AudioSys.medal(); addScore(500,p.x,p.y-20); }
+  updateHUD();
+}
+
+// ============ 绘制 ============
+function drawBackground(){
+  const cfg=STAGES[stageIdx]||STAGES[0];
+  const g=ctx.createLinearGradient(0,0,0,H);
+  if(cfg.theme==='grass'){ g.addColorStop(0,'#4d9e57'); g.addColorStop(1,'#3a7d44'); }
+  else if(cfg.theme==='sea'){ g.addColorStop(0,'#1565a0'); g.addColorStop(1,'#0d4a78'); }
+  else { g.addColorStop(0,'#6b5a44'); g.addColorStop(1,'#54452f'); }
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  // 地面装饰
+  for(const d of decor){
+    ctx.save(); ctx.translate(d.x,d.y); ctx.scale(d.s,d.s); ctx.globalAlpha=0.75;
+    if(d.kind==='tree'){ ctx.fillStyle='#2d6a35'; ctx.beginPath(); ctx.arc(0,0,15,0,7); ctx.arc(11,5,11,0,7); ctx.fill(); }
+    else if(d.kind==='rock'){ ctx.fillStyle='#8d8d7a'; ctx.beginPath(); ctx.ellipse(0,0,13,8,0.4,0,7); ctx.fill(); }
+    else if(d.kind==='field'){ ctx.fillStyle='rgba(230,200,90,.35)'; ctx.fillRect(-24,-16,48,32); }
+    else if(d.kind==='coast'){ ctx.fillStyle='rgba(240,220,160,.5)'; ctx.beginPath(); ctx.ellipse(0,0,26,13,0,0,7); ctx.fill(); }
+    else if(d.kind==='wave'){ ctx.strokeStyle='rgba(255,255,255,.4)'; ctx.lineWidth=2.5; ctx.beginPath(); ctx.arc(0,0,13,0.3,2.4); ctx.stroke(); }
+    else if(d.kind==='island'){ ctx.fillStyle='#c9b078'; ctx.beginPath(); ctx.ellipse(0,0,28,13,0,0,7); ctx.fill(); ctx.fillStyle='#4d9e57'; ctx.beginPath(); ctx.ellipse(0,-2,17,8,0,0,7); ctx.fill(); }
+    else if(d.kind==='shipwreck'){ ctx.fillStyle='rgba(70,70,80,.7)'; ctx.fillRect(-20,-6,40,12); ctx.fillRect(2,-14,8,10); }
+    else if(d.kind==='crater'){ ctx.fillStyle='rgba(30,24,16,.55)'; ctx.beginPath(); ctx.ellipse(0,0,17,10,0,0,7); ctx.fill(); }
+    else if(d.kind==='building'){ ctx.fillStyle='rgba(40,44,58,.8)'; ctx.fillRect(-18,-14,36,28); ctx.fillStyle='rgba(255,220,120,.5)'; ctx.fillRect(-11,-7,6,6); ctx.fillRect(5,3,6,6); }
+    else if(d.kind==='runway'){ ctx.fillStyle='rgba(50,50,55,.85)'; ctx.fillRect(-16,-30,32,60); ctx.fillStyle='rgba(255,255,255,.65)'; ctx.fillRect(-1.5,-26,3,12); ctx.fillRect(-1.5,0,3,12); }
+    ctx.restore();
+  }
+  ctx.globalAlpha=1;
+}
+function drawPlane(x,y,scale,color,flip){
+  ctx.save(); ctx.translate(x,y); ctx.scale(scale,scale*(flip?-1:1));
+  ctx.fillStyle=color;
+  ctx.beginPath(); ctx.moveTo(0,-16); ctx.lineTo(4,-4); ctx.lineTo(15,8); ctx.lineTo(15,12); ctx.lineTo(5,10); ctx.lineTo(3,15); ctx.lineTo(-3,15); ctx.lineTo(-5,10); ctx.lineTo(-15,12); ctx.lineTo(-15,8); ctx.lineTo(-4,-4); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='rgba(160,230,255,.9)'; ctx.beginPath(); ctx.ellipse(0,-5,2.6,5,0,0,7); ctx.fill();
+  ctx.restore();
+}
+function drawEnemy(e){
+  const flash=(e.flashT||0)>0;
+  ctx.save(); ctx.translate(e.x,e.y);
+  if(e.type==='pop') drawPlane(0,0,1,flash?'#fff':'#e74c3c',true);
+  else if(e.type==='dart'){ ctx.fillStyle=flash?'#fff':'#e17055'; ctx.beginPath(); ctx.moveTo(0,15); ctx.lineTo(5,-8); ctx.lineTo(0,-14); ctx.lineTo(-5,-8); ctx.closePath(); ctx.fill(); }
+  else if(e.type==='tank'){ ctx.fillStyle=flash?'#fff':'#4a6741'; ctx.fillRect(-15,-11,30,22); ctx.fillStyle='#374d31'; ctx.fillRect(-17,-13,6,26); ctx.fillRect(11,-13,6,26);
+    ctx.fillStyle=flash?'#fff':'#5d7d52'; ctx.beginPath(); ctx.arc(0,0,9,0,7); ctx.fill();
+    const a=Math.atan2(player&&!player.dead?player.y-e.y:100,player&&!player.dead?player.x-e.x:0); ctx.strokeStyle='#222'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*15,Math.sin(a)*15); ctx.stroke(); }
+  else if(e.type==='turret'){ ctx.fillStyle=flash?'#fff':'#636e72'; ctx.beginPath(); ctx.arc(0,0,14,0,7); ctx.fill();
+    const a=Math.atan2(player&&!player.dead?player.y-e.y:100,player&&!player.dead?player.x-e.x:0); ctx.strokeStyle='#222'; ctx.lineWidth=4.5; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*17,Math.sin(a)*17); ctx.stroke();
+    ctx.fillStyle='#d63031'; ctx.beginPath(); ctx.arc(0,0,4.5,0,7); ctx.fill(); }
+  else if(e.type==='mid') drawPlane(0,0,1.45,flash?'#fff':'#7f8c9b',true);
+  else if(e.type==='bomber'){ drawPlane(0,0,2.3,flash?'#fff':'#57606f',true); ctx.fillStyle='#2d3436'; [-26,26].forEach(dx=>{ ctx.beginPath(); ctx.arc(dx,4,6,0,7); ctx.fill(); }); }
+  else if(e.type==='carrier'){ drawPlane(0,0,1.25,flash?'#fff':'#d63031',true); if(Math.floor(e.t*4)%2===0){ ctx.fillStyle='#ffeaa7'; ctx.beginPath(); ctx.arc(0,0,4,0,7); ctx.fill(); } }
+  else if(e.type==='boss') drawBoss(e,flash);
+  ctx.restore();
+  if(e.type!=='boss'&&e.maxHp>=40){ ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(e.x-e.r,e.y-e.r-9,e.r*2,4); ctx.fillStyle='#ff7675'; ctx.fillRect(e.x-e.r,e.y-e.r-9,e.r*2*Math.max(e.hp,0)/e.maxHp,4); }
+}
+function drawBoss(e,flash){
+  const cfg=STAGES[stageIdx];
+  if(stageIdx===0){ drawPlane(0,0,4.6,flash?'#fff':'#57606f',true); ctx.fillStyle='#2d3436'; [-52,52].forEach(dx=>{ ctx.beginPath(); ctx.arc(dx,10,11,0,7); ctx.fill(); }); }
+  else if(stageIdx===1){ ctx.fillStyle=flash?'#fff':'#3d4a5c'; ctx.beginPath(); ctx.moveTo(0,86); ctx.lineTo(30,30); ctx.lineTo(24,-70); ctx.lineTo(-24,-70); ctx.lineTo(-30,30); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#2b3646'; ctx.fillRect(-14,-44,28,52); ctx.fillStyle='#54687f'; ctx.fillRect(-8,-78,16,30); }
+  else { ctx.save(); ctx.rotate(Math.sin(e.t*0.7)*0.14); ctx.fillStyle=flash?'#fff':'#4a3b63';
+    ctx.beginPath(); for(let i=0;i<8;i++){ const a=i/8*Math.PI*2+e.t*0.1; const px=Math.cos(a)*56,py=Math.sin(a)*56; i?ctx.lineTo(px,py):ctx.moveTo(px,py);} ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#6c5ce7'; ctx.beginPath(); ctx.arc(0,0,30,0,7); ctx.fill(); ctx.fillStyle='#ff2e63'; ctx.beginPath(); ctx.arc(0,0,13+Math.sin(e.t*5)*2.5,0,7); ctx.fill(); ctx.restore(); }
+  for(const t of e.turrets){ if(t.dead) continue; ctx.fillStyle='#2d3436'; ctx.beginPath(); ctx.arc(t.dx,t.dy,t.r,0,7); ctx.fill(); ctx.fillStyle='#d63031'; ctx.beginPath(); ctx.arc(t.dx,t.dy,5,0,7); ctx.fill();
+    ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(t.dx-t.r,t.dy-t.r-8,t.r*2,4); ctx.fillStyle='#fdcb6e'; ctx.fillRect(t.dx-t.r,t.dy-t.r-8,t.r*2*Math.max(t.hp,0)/t.maxHp,4); }
+}
+function draw(){
+  ctx.save();
+  if(shake>0) ctx.translate(rand(-shake,shake)*0.4,rand(-shake,shake)*0.4);
+  drawBackground();
+  // 地面敌人先画（在下层）
+  for(const e of enemies) if(e.ground) drawEnemy(e);
+  // 道具
+  for(const it of items){ ctx.save(); ctx.translate(it.x,it.y); ctx.rotate(Math.sin(it.t*4)*0.16);
+    const conf={red:['#d63031','R'],blue:['#0984e3','B'],pow:['#e1b12c','P'],bomb:['#00b894','💣'],medal:['#f39c12','★']}[it.kind];
+    ctx.fillStyle=conf[0]; ctx.strokeStyle='#fff'; ctx.lineWidth=2;
+    if(it.kind==='medal'){ ctx.beginPath(); ctx.arc(0,0,11,0,7); ctx.fill(); ctx.stroke(); ctx.fillStyle='#fff'; ctx.font='bold 13px sans-serif'; }
+    else { ctx.fillRect(-12,-12,24,24); ctx.strokeRect(-12,-12,24,24); ctx.fillStyle='#fff'; ctx.font= it.kind==='bomb'?'13px serif':'bold 15px sans-serif'; }
+    ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(conf[1],0,1); ctx.restore(); }
+  // 空中敌人
+  for(const e of enemies) if(!e.ground) drawEnemy(e);
+  // 导弹
+  for(const ms of missiles){ ctx.save(); ctx.translate(ms.x,ms.y); ctx.rotate(Math.atan2(ms.vy,ms.vx)+Math.PI/2); ctx.fillStyle='#dfe6e9'; ctx.fillRect(-3,-8,6,13); ctx.fillStyle='#e74c3c'; ctx.fillRect(-3,-11,6,4); ctx.restore(); }
+  // 蓝激光
+  ctx.lineCap='round';
+  for(const s of lasers){ ctx.strokeStyle='rgba(0,210,255,.85)'; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(s.x,s.y); ctx.lineTo(s.x-s.vx*0.018,s.y-s.vy*0.018); ctx.stroke(); ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(s.x,s.y); ctx.lineTo(s.x-s.vx*0.018,s.y-s.vy*0.018); ctx.stroke(); }
+  // 红子弹
+  ctx.fillStyle='#ffeaa7'; for(const b of bullets){ ctx.fillRect(b.x-2,b.y-7,4,12); }
+  // 敌弹
+  for(const b of ebullets){ ctx.fillStyle='#ff5e78'; ctx.beginPath(); ctx.arc(b.x,b.y,5.5,0,7); ctx.fill(); ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(b.x,b.y,2.2,0,7); ctx.fill(); }
+  // 玩家
+  if(player&&!player.dead){ if(!(player.invuln>0&&Math.floor(player.invuln*12)%2===0)){
+    ctx.fillStyle='rgba(255,140,0,.85)'; ctx.beginPath(); ctx.moveTo(player.x-4,player.y+16); ctx.lineTo(player.x,player.y+24+Math.random()*8); ctx.lineTo(player.x+4,player.y+16); ctx.fill();
+    drawPlane(player.x,player.y,1.15,player.weapon==='blue'?'#2471c8':'#c0392b',false);
+    ctx.fillStyle='#fff'; ctx.strokeStyle='#ff2e63'; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(player.x,player.y,3.2,0,7); ctx.fill(); ctx.stroke(); } }
+  // 粒子/漂字
+  for(const p of parts){ ctx.globalAlpha=Math.max(p.life,0); ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill(); }
+  ctx.globalAlpha=1; ctx.textAlign='center';
+  for(const f of floats){ ctx.globalAlpha=Math.max(f.life,0); ctx.fillStyle=f.color; ctx.font='bold 14px sans-serif'; ctx.fillText(f.text,f.x,f.y); }
+  ctx.globalAlpha=1;
+  // Boss 血条
+  if(bossRef&&!bossRef.dead){ ctx.fillStyle='rgba(0,0,0,.6)'; ctx.fillRect(30,12,W-60,16); ctx.fillStyle='#d63031'; ctx.fillRect(32,14,(W-64)*Math.max(bossRef.hp,0)/bossRef.maxHp,12);
+    ctx.fillStyle='#fff'; ctx.font='bold 11px sans-serif'; ctx.fillText(STAGES[stageIdx].bossName, W/2, 23); }
+  // 舞台横幅
+  if(bannerT>0&&bannerText){ ctx.globalAlpha=Math.min(1,bannerT); ctx.fillStyle='rgba(0,0,0,.45)'; ctx.fillRect(0,H/2-64,W,104);
+    ctx.fillStyle= bannerText.includes('WARNING')?'#ff2e63':'#fff'; ctx.font='bold 34px sans-serif'; ctx.fillText(bannerText,W/2,H/2-14);
+    ctx.fillStyle='#ffeaa7'; ctx.font='16px sans-serif'; ctx.fillText(bannerSub,W/2,H/2+22); ctx.globalAlpha=1; }
+  if(state==='title'){ ctx.fillStyle='rgba(2,6,20,.55)'; ctx.fillRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.font='bold 44px sans-serif'; ctx.fillText('⚡ 雷 电 ⚡',W/2,H/2-60);
+    ctx.font='16px sans-serif'; ctx.fillStyle='#a5d8ff'; ctx.fillText('红散射 · 蓝激光 · 炸弹清屏',W/2,H/2-16); ctx.fillText('点下方「开始游戏」出击（方向键/WASD 移动，Z/空格开火）',W/2,H/2+18); }
+  if(paused&&state==='playing'){ ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(0,0,W,H); ctx.fillStyle='#fff'; ctx.font='bold 32px sans-serif'; ctx.fillText('⏸ 已暂停',W/2,H/2); }
+  ctx.restore();
+  if(flash>0){ ctx.fillStyle=`rgba(255,255,255,${Math.min(flash,1)*0.75})`; ctx.fillRect(0,0,W,H); }
+}
+// ============ HUD / 按钮 / 主循环 ============
+function updateHUD(){ if(!player) return;
+  document.getElementById('score').textContent=score;
+  document.getElementById('hi').textContent=hi;
+  document.getElementById('lives').textContent=Math.max(lives,0);
+  document.getElementById('bombs').textContent=bombsLeft;
+  document.getElementById('weapon').textContent=(player.weapon==='red'?'红色散射':'蓝色激光')+' Lv'+player.power;
+  document.getElementById('stage').textContent=(stageIdx+1)+(loopCount?' · '+ (loopCount+1)+'周目':'');
+}
+function startGame(){ AudioSys.init(); document.getElementById('overlay').classList.remove('show'); paused=false; document.getElementById('pauseBtn').textContent='⏸ 暂停 P'; resetGame(); }
+function togglePause(){ if(state!=='playing') return; paused=!paused; document.getElementById('pauseBtn').textContent=paused?'▶ 继续 P':'⏸ 暂停 P'; }
+function toggleMute(){ AudioSys.muted=!AudioSys.muted; document.getElementById('muteBtn').textContent=AudioSys.muted?'🔇 已静音 M':'🔊 声音 M'; if(AudioSys.muted) AudioSys.stopBGM(); else if(state==='playing'&&AudioSys.ctx) AudioSys.startBGM(STAGES[stageIdx]); }
+document.getElementById('startBtn').onclick=startGame;
+document.getElementById('bombBtn').onclick=()=>{ AudioSys.init(); useBomb(); };
+document.getElementById('pauseBtn').onclick=togglePause;
+document.getElementById('muteBtn').onclick=()=>{ AudioSys.init(); toggleMute(); };
+// 标题状态初始化
+state='title'; stageIdx=0; loopCount=0; score=0; lives=3; bombsLeft=3; bannerT=0;
+bullets=[]; lasers=[]; missiles=[]; enemies=[]; ebullets=[]; items=[]; parts=[]; floats=[]; decor=[]; player=null; bossRef=null; groundScroll=0; shake=0; flash=0; paused=false;
+for(let i=0;i<26;i++) decor.push(newDecor(true));
+document.getElementById('hi').textContent=hi;
+let lastT=performance.now();
+function loop(now){ const dt=Math.min((now-lastT)/1000,0.05); lastT=now;
+  if(state==='playing'&&!paused) update(dt);
+  else if(state==='title'){ groundScroll+=30*dt; for(const d of decor){ d.y+=30*dt; if(d.y>H+50) Object.assign(d,newDecor(false)); } if(bannerT>0)bannerT-=dt; }
+  draw(); requestAnimationFrame(loop); }
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
