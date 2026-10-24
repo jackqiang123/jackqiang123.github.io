@@ -47,7 +47,7 @@
     <div class="chip">SCORE <b id="score">0</b></div>
     <div class="chip">HI <b id="hi">0</b></div>
     <div class="chip">❤️ <b id="lives">3</b></div>
-    <div class="chip">💣 <b id="bombs">3</b></div>
+    <div class="chip">💣 <b id="bombs">4</b></div>
     <div class="chip">武器 <b id="weapon">红色散射 Lv1</b></div>
     <div class="chip">STAGE <b id="stage">1</b></div>
   </div>
@@ -65,9 +65,9 @@
     <b>操作：</b>子弹<b>全程自动发射</b>，你只负责走位。电脑：方向键 / WASD 移动，X 或双击画面放炸弹，P 暂停，M 静音。手机：<b>手指拖动</b>移动（相对拖动，手指不会挡住飞机），<b>双击画面</b>或点橙色大按钮放炸弹。切到后台会自动暂停。<br>
     <b>武器系统（雷电II 的灵魂）：</b>打掉道具运输机掉落道具。拾 <b style="color:#ff7675">红色 R</b> = 散射炮（越升级越宽）；拾 <b style="color:#c77dff">紫色 L</b> = 弯曲电浆（雷电II 标志性的“牙膏激光”，会自己拐弯锁敌）；同色再拾 = 火力 +1（最高 Lv8）。拾 P 直接 +1，拾 💣 补炸弹，拾 ★ 奖牌加分。<br>
     <b>关卡：</b>共 3 大关 —— ① 草原海岸 ② 海洋舰队 ③ 机械要塞，每关约 70 秒杂兵战后 Boss 现身（有 ⚠️ WARNING 警报）。通关后进入更高难度的下一周目。<br>
-    <b>诀窍：</b>判定点只有机身中央的小核心，敌弹靠近时核心会亮起提示 —— 擦弹穿缝是街机味儿；阵亡火力 -3，复活有 3 秒无敌闪烁，别贪道具送命。
+    <b>诀窍：</b>判定点只有机身中央的小核心，敌弹靠近时核心会亮起提示 —— 擦弹穿缝是街机味儿；阵亡火力 -2，复活有 3.5 秒无敌闪烁，别贪道具送命。
   </details>
-  <footer>纯 HTML/JS + WebAudio 合成音效与配乐，无外部素材 · v2：自动开火 / 手机适配 / 街机观感重做 · jackqiang123.github.io/raiden</footer>
+  <footer>纯 HTML/JS + WebAudio 合成音效与配乐，无外部素材 · v2.1：自动开火 / 手机适配 / 街机观感 / 难度友好化（敌弹更慢、敌人更脆、开局 4 颗炸弹） · jackqiang123.github.io/raiden</footer>
 </div>
 <div class="overlay" id="overlay"><div class="dialog"><h2 id="ovTitle"></h2><p id="ovText"></p><button class="btn red" onclick="startGame()">再来一局</button></div></div>
 
@@ -127,9 +127,9 @@ const AudioSys={
 
 // ============ 关卡配置 ============
 const STAGES=[
-  {name:"STAGE 1",sub:"草原海岸",theme:"grass",bpm:132,bass:[110,0,110,0,131,0,110,0,98,0,98,0,147,0,131,0],lead:[440,0,523,587,0,659,587,523,440,0,392,440,0,0,0,0],scroll:76,hpMul:1,bullet:140,bossName:"重型爆轰者「大黄蜂」",bossHp:1500},
-  {name:"STAGE 2",sub:"海洋舰队",theme:"sea",bpm:142,bass:[98,0,98,0,117,0,98,0,87,0,87,0,131,0,117,0],lead:[392,0,466,523,0,622,523,466,392,0,349,392,0,466,0,0],scroll:88,hpMul:1.55,bullet:162,bossName:"深海战列舰「玄武」",bossHp:2300},
-  {name:"STAGE 3",sub:"机械要塞",theme:"base",bpm:154,bass:[87,0,87,87,0,104,0,87,0,82,0,82,0,123,0,104,0],lead:[349,0,415,466,0,523,466,415,349,311,0,349,0,415,0,0],scroll:100,hpMul:2.2,bullet:186,bossName:"要塞核心「天王」",bossHp:3400},
+  {name:"STAGE 1",sub:"草原海岸",theme:"grass",bpm:132,bass:[110,0,110,0,131,0,110,0,98,0,98,0,147,0,131,0],lead:[440,0,523,587,0,659,587,523,440,0,392,440,0,0,0,0],scroll:76,hpMul:0.85,bullet:112,bossName:"重型爆轰者「大黄蜂」",bossHp:1200},
+  {name:"STAGE 2",sub:"海洋舰队",theme:"sea",bpm:142,bass:[98,0,98,0,117,0,98,0,87,0,87,0,131,0,117,0],lead:[392,0,466,523,0,622,523,466,392,0,349,392,0,466,0,0],scroll:88,hpMul:1.3,bullet:130,bossName:"深海战列舰「玄武」",bossHp:1850},
+  {name:"STAGE 3",sub:"机械要塞",theme:"base",bpm:154,bass:[87,0,87,87,0,104,0,87,0,82,0,82,0,123,0,104,0],lead:[349,0,415,466,0,523,466,415,349,311,0,349,0,415,0,0],scroll:100,hpMul:1.8,bullet:150,bossName:"要塞核心「天王」",bossHp:2700},
 ];
 const BOSS_TIME=68, WARN_TIME=BOSS_TIME-3.2;
 
@@ -193,7 +193,7 @@ const TILES={}; STAGES.forEach(s=>{ TILES[s.theme]=makeTile(s.theme); });
 // ============ 游戏状态 ============
 let state='title'; // title | play | over
 let paused=false;
-let score=0, hi=+(localStorage.getItem('raiden_hi')||0), lives=3, bombs=3, loopCount=1;
+let score=0, hi=+(localStorage.getItem('raiden_hi')||0), lives=3, bombs=4, loopCount=1;
 let stageIdx=0, stageTime=0, bgY=0, shake=0, time=0;
 let warned=false, bossSpawned=false, bossRef=null, stageEnding=0, endTimer=0;
 const player={x:W/2,y:H-120,weapon:'red',power:1,invuln:0,dead:0,shotT:0,mslT:0,flame:0};
@@ -217,7 +217,7 @@ function boom(x,y,size,big){
 function dropItem(x,y,kind){ items.push({x,y,kind,t:0,vy:56}); }
 function spawnEnemy(kind,x,y){
   const m=stage().hpMul*Math.pow(1.35,loopCount-1);
-  const base={kind,x,y,t:0,fireT:rand(0.7,1.6),flash:0,phase:rand(0,TAU)};
+  const base={kind,x,y,t:0,fireT:rand(1.1,2.1),flash:0,phase:rand(0,TAU)};
   if(kind==='pop') Object.assign(base,{hp:3*m,r:13,score:100,vy:118});
   if(kind==='dart') Object.assign(base,{hp:5*m,r:12,score:150,vy:215,vx:(x<W/2?52:-52)});
   if(kind==='mid') Object.assign(base,{hp:16*m,r:24,score:300,vy:66});
@@ -268,13 +268,13 @@ function killBoss(e){
 }
 function playerDie(){
   boom(player.x,player.y,1,true); AudioSys.playerDown();
-  lives--; player.power=Math.max(1,player.power-3);
+  lives--; player.power=Math.max(1,player.power-2);
   ebullets=[];
   if(lives<0){ state='over'; AudioSys.stopBGM();
     document.getElementById('ovTitle').textContent='GAME OVER';
     document.getElementById('ovText').textContent=`最终分数 ${score}\n历史最高 ${hi}\n打到 ${stage().name} · 第 ${loopCount} 周目`;
     document.getElementById('overlay').classList.add('show');
-  } else { player.dead=1.4; player.invuln=3; player.x=W/2; player.y=H-120; }
+  } else { player.dead=1.4; player.invuln=3.5; player.x=W/2; player.y=H-120; }
   updateHUD();
 }
 function nextStage(){
@@ -288,7 +288,7 @@ function nextStage(){
 }
 function startGame(){
   AudioSys.init();
-  score=0; lives=3; bombs=3; loopCount=1; stageIdx=0; stageTime=0; bgY=0;
+  score=0; lives=3; bombs=4; loopCount=1; stageIdx=0; stageTime=0; bgY=0;
   warned=false; bossSpawned=false; bossRef=null; stageEnding=0; bombFx=0; carrierAlt=0;
   enemies=[]; pbullets=[]; ebullets=[]; parts=[]; items=[]; floats=[]; props=[]; lasers=[];
   Object.assign(player,{x:W/2,y:H-120,weapon:'red',power:1,invuln:0,dead:0,shotT:0,mslT:0});
@@ -337,7 +337,7 @@ function manageLasers(dt){
   while(lasers.length<want){ const pts=[]; for(let i=0;i<24;i++) pts.push({x:player.x,y:player.y-20-i*16});
     lasers.push({target:null,points:pts,acc:0}); }
   while(lasers.length>want) lasers.pop();
-  const dps=12+player.power*0.9;
+  const dps=14+player.power*1.1;
   for(const L of lasers){
     if(!L.target||L.target.deadFlag||!enemies.includes(L.target)) L.target=nearestEnemy(player.x,player.y);
     const pts=L.points; pts[0].x=player.x; pts[0].y=player.y-20;
@@ -370,7 +370,7 @@ function spawnAmbientProp(){
   props.push({type,x:rand(24,W-24),y:-32,t:0,s:rand(0.8,1.35)});
 }
 function runSpawning(dt){
-  const dens=1-stageIdx*0.07;
+  const dens=1.18-stageIdx*0.06;
   spawnT.pop-=dt; spawnT.dart-=dt; spawnT.ground-=dt; spawnT.mid-=dt; spawnT.bomber-=dt; spawnT.carrier-=dt; spawnT.prop-=dt;
   if(spawnT.prop<=0){ spawnAmbientProp(); spawnT.prop=rand(0.35,0.85); }
   if(spawnT.pop<=0){ const n=irand(3,5), bx=rand(70,W-70);
@@ -393,7 +393,7 @@ function enemyFire(e){
   else if(e.kind==='bomber'){ for(let k=-2;k<=2;k++) eShoot(e.x,e.y+24,Math.PI/2+k*0.17,sp*0.9,k%2===0); if(Math.random()<0.5) eShoot(e.x,e.y+24,a,sp); }
   else if(e.kind==='tank'||e.kind==='turret') eShoot(e.x,e.y,a,sp*1.02);
 }
-const FIRE_RESET={pop:[1.9,2.7],mid:[1.5,2.1],bomber:[2.3,3.0],tank:[1.8,2.4],turret:[1.4,2.0]};
+const FIRE_RESET={pop:[2.4,3.4],mid:[1.9,2.7],bomber:[2.8,3.7],tank:[2.3,3.1],turret:[1.9,2.7]};
 
 // ============ 主更新 ============
 function update(dt){
@@ -437,7 +437,7 @@ function update(dt){
         if(e.fanT<=0){ for(let k=-2;k<=2;k++) eShoot(e.x,e.y+52,Math.PI/2+k*0.16,stage().bullet*0.95,true); e.fanT=1.05; }
         for(const t of e.turrets){ if(t.dead) continue; if(t.flash>0) t.flash-=dt;
           t.fireT-=dt;
-          if(t.fireT<=0){ const wx=e.x+t.dx, wy=e.y+t.dy; eShoot(wx,wy,aimAng(wx,wy),stage().bullet*1.03); t.fireT=rand(1.5,2.3); } }
+          if(t.fireT<=0){ const wx=e.x+t.dx, wy=e.y+t.dy; eShoot(wx,wy,aimAng(wx,wy),stage().bullet*1.03); t.fireT=rand(2.0,3.0); } }
         if(e.hp<e.maxHp*0.4){
           e.radialT=(e.radialT===undefined?2.0:e.radialT)-dt;
           if(e.radialT<=0){ for(let k=0;k<14;k++) eShoot(e.x,e.y+20,k/14*TAU,stage().bullet*0.8,true); e.radialT=2.8; }
@@ -493,7 +493,7 @@ function update(dt){
     if(b.x<-16||b.x>W+16||b.y<-16||b.y>H+16){ ebullets.splice(i,1); continue; }
     if(player.dead<=0){
       const d=Math.hypot(b.x-player.x,b.y-player.y);
-      if(d<5+b.r){ if(player.invuln<=0){ ebullets.splice(i,1); playerDie(); break; } continue; }
+      if(d<4+b.r){ if(player.invuln<=0){ ebullets.splice(i,1); playerDie(); break; } continue; }
       if(d<26&&!b.grazed){ b.grazed=true; addScore(10); }
     }
   }
