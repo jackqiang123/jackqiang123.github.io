@@ -82,7 +82,7 @@
   </div>
   <details class="tips">
     <summary>玩法说明（点开）</summary>
-    外星人伪装成场景的颜色，混在<b>公园 / 海滩 / 夜市</b>里 —— 可能躲在树丛后、伞下、摊位后，只露个头。<b>拖动画面</b>移动镜头，先在全景里找可疑的影子，再<b>开镜放大</b>确认：三只眼睛、头顶触角、眨眼的瞬间都是破绽。稳住准星（开镜后按住<b>屏息</b>能大幅减小晃动），点<b>开火</b>！<br>
+    外星人的身体颜色<b>直接取自藏身处的背景</b>，真正融进<b>公园 / 海滩 / 夜市</b> —— 可能躲在树丛后、伞下、摊位后，只露个头。<b>拖动画面</b>移动准星，全景下拖动时会出现<b>跟随手指的放大镜</b>，开镜后拖动镜头跟着走；先找可疑的影子，再<b>开镜放大</b>确认：三只眼睛、头顶触角、眨眼的瞬间都是破绽。稳住准星（开镜后按住<b>屏息</b>能大幅减小晃动），点<b>开火</b>！<br>
     打错平民：扣 50 分并扣 5 秒。每关限时内打掉全部外星人过关。💡 提示每关 3 次，会在外星人位置闪一个光圈（要在视野里才看得见）。电脑：鼠标移动瞄准、点击开火、滚轮/右键开镜、空格开火。
   </details>
   <footer>纯 HTML/JS + Canvas 手绘场景与角色，WebAudio 合成枪声 · 无外部素材 · jackqiang123.github.io/alien-sniper</footer>
@@ -392,15 +392,20 @@ function drawAlien(g,a){
   const sc=a.sc, c=alienCenter(a);
   const sway=Math.sin(elapsed*0.9+a.phase)*1.6;
   const col = a.found ? '#3ae374' : a.camo;
-  const dark = a.found ? '#218c4a' : shade(a.camo,-34);
-  const light = a.found ? '#7bf2a0' : shade(a.camo,26);
+  const dark = a.found ? '#218c4a' : shade(a.camo,-15);
+  const light = a.found ? '#7bf2a0' : shade(a.camo,13);
   if(a.type==='stand'||a.type==='peek'){
-    ellipse(g,a.x,a.y+5,26*sc,6*sc,'rgba(0,0,0,0.20)');
+    ellipse(g,a.x,a.y+5,26*sc,6*sc,'rgba(0,0,0,0.09)');
     // 身体
     const bh=56*sc, bw=34*sc;
     const grad=g.createLinearGradient(a.x,a.y-bh,a.x,a.y); grad.addColorStop(0,light); grad.addColorStop(1,dark);
     g.fillStyle=grad; g.beginPath(); g.ellipse(a.x+sway*0.4, a.y-bh/2, bw/2, bh/2, 0, 0, TAU); g.fill();
-    ellipse(g,a.x+sway*0.4, a.y-bh*0.32, bw*0.3, bh*0.24, 'rgba(255,255,255,0.13)');
+    ellipse(g,a.x+sway*0.4, a.y-bh*0.32, bw*0.3, bh*0.24, 'rgba(255,255,255,0.06)');
+    // 伪装斑纹：打破轮廓，让身体和背景的颗粒感一致
+    if(!a.found){ g.save(); g.beginPath(); g.ellipse(a.x+sway*0.4, a.y-bh/2, bw/2, bh/2, 0, 0, TAU); g.clip();
+      for(let i=0;i<18;i++){ const px=a.x+Math.sin(a.phase*13.7+i*2.71)*bw*0.4, py=a.y-bh+(((i*37+((a.phase*10)|0))%100)/100)*bh;
+        g.fillStyle=i%2?'rgba(0,0,0,0.10)':'rgba(255,255,255,0.07)'; g.fillRect(px,py,3.4,3.4); }
+      g.restore(); }
     // 脚
     g.fillStyle=dark; ellipse(g,a.x-10*sc,a.y-1,8*sc,4*sc,dark); ellipse(g,a.x+10*sc,a.y-1,8*sc,4*sc,dark);
   } else if(a.type==='head' && a.occl==='water'){
@@ -418,10 +423,10 @@ function drawAlien(g,a){
   // 三只眼睛（眨眼是破绽）
   const blink = ((elapsed + a.phase) % 4.3) < 0.13 ? 0.12 : 1;
   const wide = a.found ? 1.35 : 1;
-  g.fillStyle='#fff';
-  [[-8, -2],[8,-2],[0,-10]].forEach(o=>{ g.beginPath(); g.ellipse(hx+o[0]*sc, hy+o[1]*sc, 4.6*sc*wide, 5.4*sc*blink*wide, 0, 0, TAU); g.fill(); });
+  g.fillStyle='rgba(255,255,255,0.92)';
+  [[-8, -2],[8,-2],[0,-10]].forEach(o=>{ g.beginPath(); g.ellipse(hx+o[0]*sc, hy+o[1]*sc, 3.9*sc*wide, 4.6*sc*blink*wide, 0, 0, TAU); g.fill(); });
   g.fillStyle='#1c2430';
-  [[-8,-2],[8,-2],[0,-10]].forEach(o=>{ g.beginPath(); g.arc(hx+o[0]*sc+Math.sin(elapsed*0.4+a.phase)*1.2, hy+o[1]*sc, 2.1*sc, 0, TAU); g.fill(); });
+  [[-8,-2],[8,-2],[0,-10]].forEach(o=>{ g.beginPath(); g.arc(hx+o[0]*sc+Math.sin(elapsed*0.4+a.phase)*1.2, hy+o[1]*sc, 1.8*sc, 0, TAU); g.fill(); });
   // 嘴
   g.strokeStyle='rgba(20,30,20,0.75)'; g.lineWidth=1.8*sc; g.beginPath();
   if(a.found){ g.arc(hx,hy+8*sc,4.6*sc,0,TAU); g.stroke(); }
@@ -433,8 +438,20 @@ function drawAlien(g,a){
   }
 }
 function drawStar(g,x,y,r){ g.beginPath(); for(let i=0;i<10;i++){ const an=i/10*TAU-Math.PI/2, rr=i%2?r*0.45:r; g[i?'lineTo':'moveTo'](x+Math.cos(an)*rr, y+Math.sin(an)*rr); } g.closePath(); g.fill(); }
-function shade(hex,amt){ const n=parseInt(hex.slice(1),16); let r=(n>>16)+amt, gg=((n>>8)&255)+amt, b=(n&255)+amt;
-  r=clamp(r,0,255); gg=clamp(gg,0,255); b=clamp(b,0,255); return `rgb(${r},${gg},${b})`; }
+function shade(col,amt){ let r,gg,b;
+  if(col[0]==='#'){ const n=parseInt(col.slice(1),16); r=n>>16; gg=(n>>8)&255; b=n&255; }
+  else { const m=col.match(/\d+/g); r=+m[0]; gg=+m[1]; b=+m[2]; }
+  r=clamp(r+amt,0,255); gg=clamp(gg+amt,0,255); b=clamp(b+amt,0,255); return `rgb(${r},${gg},${b})`; }
+// 真·融入背景：从已绘制的背景层上采样藏身点附近的平均颜色，作为外星人的体色
+function sampleCamo(x,y){
+  const g=bgLayer.getContext('2d');
+  const sx=clamp(Math.round(x-38),0,VW-76), sy=clamp(Math.round(y-40),0,VH-76);
+  try{
+    const d=g.getImageData(sx,sy,76,76).data; let r=0,gg=0,b=0,n=0;
+    for(let i=0;i<d.length;i+=16){ r+=d[i]; gg+=d[i+1]; b+=d[i+2]; n++; }
+    return `rgb(${Math.round(r/n)},${Math.round(gg/n)},${Math.round(b/n)})`;
+  }catch(e){ return '#6b8a52'; }
+}
 
 // ============ 关卡构建 ============
 function buildLevel(idx){
@@ -449,7 +466,8 @@ function buildLevel(idx){
   const spots=layout.spots.slice();
   for(let i=spots.length-1;i>0;i--){ const j=(rnd()*(i+1))|0; [spots[i],spots[j]]=[spots[j],spots[i]]; }
   aliens=spots.slice(0,L.aliens).map((s,i)=>({ x:s.x, y:s.y, type:s.type, occl:s.occl,
-    camo:L.camo[(rnd()*L.camo.length)|0], sc:L.scale*personScale(s.y)*(s.type==='head'?0.92:1.0),
+    camo:shade(sampleCamo(s.x, s.type==='head'? s.y-6 : s.y-38), ((rnd()*13)|0)-6),
+    sc:L.scale*personScale(s.y)*(s.type==='head'?0.92:1.0),
     phase:rnd()*10, found:false, gone:false, revealT:0 }));
   // 平民
   const shirts=['#e74c3c','#3498db','#f1c40f','#9b59b6','#1abc9c','#e67e22','#fd79a8','#95a5a6','#dfe6e9','#00b894'];
@@ -612,12 +630,24 @@ function draw(){
   if(!scoped){
     const z=CW/VW;
     ctx.save(); ctx.translate(shx,shy); ctx.scale(z,z); drawWorld(ctx); ctx.restore();
-    // 全景准星（中心）
-    ctx.strokeStyle='rgba(255,255,255,0.85)'; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.arc(CW/2,CH/2,17,0,TAU); ctx.stroke();
-    ctx.fillStyle='rgba(255,80,80,0.95)'; ctx.beginPath(); ctx.arc(CW/2,CH/2,2.6,0,TAU); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(CW/2-26,CH/2); ctx.lineTo(CW/2-9,CH/2); ctx.moveTo(CW/2+9,CH/2); ctx.lineTo(CW/2+26,CH/2);
-    ctx.moveTo(CW/2,CH/2-26); ctx.lineTo(CW/2,CH/2-9); ctx.moveTo(CW/2,CH/2+9); ctx.lineTo(CW/2,CH/2+26); ctx.stroke();
+    const ax=cam.x*z+shx, ay=cam.y*z+shy;
+    // 拖动时：跟随手指/准星的放大镜（狙击镜跟着手指走）
+    if(drag){
+      ctx.save(); ctx.beginPath(); ctx.arc(ax,ay,118,0,TAU); ctx.clip();
+      ctx.translate(ax,ay); ctx.scale(1.55,1.55); ctx.translate(-cam.x,-cam.y); drawWorld(ctx);
+      ctx.restore();
+      ctx.strokeStyle='rgba(8,12,18,0.92)'; ctx.lineWidth=8; ctx.beginPath(); ctx.arc(ax,ay,118,0,TAU); ctx.stroke();
+      ctx.strokeStyle='rgba(160,210,255,0.55)'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(ax,ay,112,0,TAU); ctx.stroke();
+      ctx.strokeStyle='rgba(10,12,16,0.85)';
+      ctx.beginPath(); ctx.moveTo(ax-118,ay); ctx.lineTo(ax-13,ay); ctx.moveTo(ax+13,ay); ctx.lineTo(ax+118,ay);
+      ctx.moveTo(ax,ay-118); ctx.lineTo(ax,ay-13); ctx.moveTo(ax,ay+13); ctx.lineTo(ax,ay+118); ctx.stroke();
+    }
+    // 全景准星（跟着瞄准点走，不再钉在屏幕中心）
+    ctx.strokeStyle='rgba(255,255,255,0.9)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(ax,ay,17,0,TAU); ctx.stroke();
+    ctx.fillStyle='rgba(255,80,80,0.95)'; ctx.beginPath(); ctx.arc(ax,ay,2.6,0,TAU); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(ax-26,ay); ctx.lineTo(ax-9,ay); ctx.moveTo(ax+9,ay); ctx.lineTo(ax+26,ay);
+    ctx.moveTo(ax,ay-26); ctx.lineTo(ax,ay-9); ctx.moveTo(ax,ay+9); ctx.lineTo(ax,ay+26); ctx.stroke();
   } else {
     const z=1.55, cx=CW/2, cy=CH/2-24, R=332;
     const aim=aimPoint();
@@ -661,7 +691,7 @@ function draw(){
 // ============ 输入 ============
 let drag=null, lastTapT=0;
 function canvasPos(e){ const r=canvas.getBoundingClientRect(); return {x:(e.clientX-r.left)/r.width*CW, y:(e.clientY-r.top)/r.height*CH}; }
-function clampCam(){ if(scoped){ const m=332/1.55+8; cam.x=clamp(cam.x,m,VW-m); cam.y=clamp(cam.y,m,VH-m); } else { cam.x=clamp(cam.x,0,VW); cam.y=clamp(cam.y,0,VH); } }
+function clampCam(){ if(scoped){ const m=332/1.55+8; cam.x=clamp(cam.x,m,VW-m); cam.y=clamp(cam.y,m,VH-m); } else { cam.x=clamp(cam.x,26,VW-26); cam.y=clamp(cam.y,26,VH-26); } }
 canvas.addEventListener('pointerdown',e=>{ e.preventDefault(); Snd.init();
   const p=canvasPos(e); drag={sx:p.x,sy:p.y,camx:cam.x,camy:cam.y,moved:false,t:performance.now()};
   canvas.setPointerCapture(e.pointerId);
@@ -671,9 +701,13 @@ canvas.addEventListener('pointermove',e=>{ const p=canvasPos(e);
     if(Math.abs(dx)+Math.abs(dy)>7) drag.moved=true;
     const z=scoped?1.55:CW/VW;
     cam.x=drag.camx-dx/z; cam.y=drag.camy-dy/z; clampCam();
-  } else if(e.pointerType==='mouse'&&scoped&&state==='play'){
-    cam.x+=(p.x-CW/2)*0.055; cam.y+=(p.y-(CH/2-24))*0.055; clampCam(); } });
-canvas.addEventListener('pointerup',e=>{ if(drag&&!drag.moved&&performance.now()-drag.t<300&&state==='play'){ lastTapT=performance.now(); }
+  } else if(e.pointerType==='mouse'&&state==='play'){
+    if(scoped){ cam.x+=(p.x-CW/2)*0.055; cam.y+=(p.y-(CH/2-24))*0.055; }
+    else { const z=CW/VW; cam.x+=(p.x/z-cam.x)*0.4; cam.y+=(p.y/z-cam.y)*0.4; }
+    clampCam(); } });
+canvas.addEventListener('pointerup',e=>{ if(drag&&!drag.moved&&performance.now()-drag.t<300&&state==='play'){
+    if(!scoped){ const z=CW/VW; const p=canvasPos(e); cam.x=p.x/z; cam.y=p.y/z; clampCam(); } // 点哪儿准星到哪儿
+    lastTapT=performance.now(); }
   drag=null; });
 canvas.addEventListener('wheel',e=>{ e.preventDefault(); toggleScope(); },{passive:false});
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
