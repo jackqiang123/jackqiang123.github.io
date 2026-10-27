@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>贪吃蛇大冒险 · Lian 的游戏小站</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(160deg,#1a2f1a,#2d5016 55%,#3a6b1e);min-height:100vh;color:#ecf0f1;display:flex;flex-direction:column;align-items:center;padding:12px 12px 28px}
+  a.back{color:#a8e063;text-decoration:none;font-size:14px;align-self:flex-start;font-weight:700}
+  h1{font-size:28px;letter-spacing:2px;margin:8px 0 2px;text-shadow:0 3px 14px rgba(0,0,0,.5)}
+  .sub{color:#c8e6a0;font-size:13px;text-align:center;line-height:1.6}
+  .hud{display:flex;gap:10px;margin:12px 0 10px;flex-wrap:wrap;justify-content:center}
+  .hud .box{background:rgba(255,255,255,.96);color:#2d3436;border-radius:12px;padding:8px 16px;min-width:86px;text-align:center;box-shadow:0 6px 16px rgba(0,0,0,.25)}
+  .hud .box b{display:block;font-size:20px;color:#27ae60}
+  .hud .box span{font-size:11px;color:#636e72;font-weight:700;letter-spacing:1px}
+  .hud .box.gold b{color:#d48806}
+  .stage{position:relative;width:min(92vw,480px);aspect-ratio:1/1}
+  canvas{width:100%;height:100%;display:block;border-radius:18px;box-shadow:0 16px 40px rgba(0,0,0,.45);touch-action:none;background:#8bc34a}
+  .overlay{position:absolute;inset:0;border-radius:18px;background:rgba(20,35,12,.82);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;backdrop-filter:blur(2px)}
+  .overlay.hidden{display:none}
+  .overlay .big{font-size:52px}
+  .overlay h2{font-size:26px;margin:8px 0 6px}
+  .overlay p{font-size:14px;color:#d5e8c0;line-height:1.8;max-width:320px}
+  .btn{margin-top:14px;background:#27ae60;color:#fff;border:none;border-radius:999px;padding:13px 34px;font-size:17px;font-weight:800;cursor:pointer;box-shadow:0 8px 20px rgba(0,0,0,.35)}
+  .btn:active{transform:scale(.96)}
+  .btn.secondary{background:#fff;color:#2d5016}
+  .controls{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;justify-content:center}
+  .controls button{background:rgba(255,255,255,.95);border:none;border-radius:999px;padding:10px 20px;font-size:14px;font-weight:800;color:#2d5016;cursor:pointer}
+  .controls button:active{transform:scale(.95)}
+  .dpad{display:grid;grid-template-columns:64px 64px 64px;grid-template-rows:64px 64px 64px;gap:6px;margin-top:16px}
+  .dpad button{background:rgba(255,255,255,.92);border:none;border-radius:16px;font-size:26px;cursor:pointer;box-shadow:0 6px 14px rgba(0,0,0,.25);color:#2d5016}
+  .dpad button:active{background:#a8e063;transform:scale(.94)}
+  .dpad .empty{background:transparent;box-shadow:none}
+  .tips{margin-top:14px;font-size:12.5px;color:#b9d99a;text-align:center;line-height:1.9;max-width:480px}
+  @media(min-width:700px){.dpad{display:none}}
+</style>
+</head>
+<body>
+<a class="back" href="../">← 回主页</a>
+<h1>🐍 贪吃蛇大冒险</h1>
+<p class="sub">吃苹果长大，金苹果限时大分！别撞墙、别咬到自己。<br>越吃越快，看看你能长到多长。</p>
+
+<div class="hud">
+  <div class="box"><span>得分</span><b id="score">0</b></div>
+  <div class="box"><span>长度</span><b id="length">3</b></div>
+  <div class="box"><span>速度</span><b id="level">1</b></div>
+  <div class="box gold"><span>最高分</span><b id="best">0</b></div>
+</div>
+
+<div class="stage">
+  <canvas id="game" width="480" height="480"></canvas>
+  <div class="overlay" id="overlay">
+    <div class="big">🐍</div>
+    <h2 id="ovTitle">准备出发！</h2>
+    <p id="ovText">方向键 / WASD / 滑动 / 屏幕方向键都能控制。<br>🍎 苹果 +10 分 · ⭐ 金苹果 +30 分（限时出现）<br>吃得越多，速度越快！</p>
+    <button class="btn" id="startBtn">开始游戏</button>
+  </div>
+</div>
+
+<div class="controls">
+  <button id="pauseBtn">⏸ 暂停</button>
+  <button id="restartBtn">↻ 重新开始</button>
+  <button id="soundBtn">🔊 音效开</button>
+</div>
+
+<div class="dpad" aria-label="方向键">
+  <div class="empty"></div><button data-dir="up">⬆</button><div class="empty"></div>
+  <button data-dir="left">⬅</button><div class="empty"></div><button data-dir="right">➡</button>
+  <div class="empty"></div><button data-dir="down">⬇</button><div class="empty"></div>
+</div>
+
+<p class="tips">💡 操作：电脑用方向键或 WASD，空格暂停；手机在草地上滑动，或用上方大方向键。<br>小技巧：金苹果只停留几秒，看到就冲；蛇变长后多绕大圈，别把自己堵死。</p>
+
+<script>
+(function(){
+"use strict";
+var COLS=20, ROWS=20;
+var canvas=document.getElementById('game');
+var ctx=canvas.getContext('2d');
+var scoreEl=document.getElementById('score');
+var lenEl=document.getElementById('length');
+var levelEl=document.getElementById('level');
+var bestEl=document.getElementById('best');
+var overlay=document.getElementById('overlay');
+var ovTitle=document.getElementById('ovTitle');
+var ovText=document.getElementById('ovText');
+var startBtn=document.getElementById('startBtn');
+
+var best=0;
+try{ best=parseInt(localStorage.getItem('snake_best')||'0',10)||0; }catch(e){ best=0; }
+bestEl.textContent=best;
+
+var snake, dir, dirQueue, food, gold, goldTimer, score, eaten, speed, timerId, running, paused, soundOn=true, particles=[];
+
+var audioCtx=null;
+function beep(freq,dur,type,vol){
+  if(!soundOn) return;
+  try{
+    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    var o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type=type||'sine'; o.frequency.value=freq;
+    g.gain.value=vol||0.08;
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+(dur||0.12));
+    o.stop(audioCtx.currentTime+(dur||0.12));
+  }catch(e){}
+}
+function sndEat(){ beep(660,0.1,'sine',0.09); setTimeout(function(){beep(880,0.12,'sine',0.07);},60); }
+function sndGold(){ beep(880,0.1,'triangle',0.1); setTimeout(function(){beep(1174,0.14,'triangle',0.09);},70); setTimeout(function(){beep(1568,0.18,'triangle',0.08);},150); }
+function sndDie(){ beep(220,0.35,'sawtooth',0.07); }
+
+function cell(){ return canvas.width/COLS; }
+
+function randomEmpty(){
+  var occupied={};
+  snake.forEach(function(s){ occupied[s.x+','+s.y]=true; });
+  if(food) occupied[food.x+','+food.y]=true;
+  if(gold) occupied[gold.x+','+gold.y]=true;
+  var empties=[];
+  for(var x=0;x<COLS;x++) for(var y=0;y<ROWS;y++){
+    if(!occupied[x+','+y]) empties.push({x:x,y:y});
+  }
+  if(!empties.length) return null;
+  return empties[Math.floor(Math.random()*empties.length)];
+}
+function spawnFood(){ food=randomEmpty(); }
+function maybeSpawnGold(){
+  if(gold) return;
+  if(Math.random()<0.35){
+    gold=randomEmpty(); goldTimer=45; // ~ ticks remaining
+  }
+}
+
+function reset(){
+  snake=[{x:9,y:10},{x:8,y:10},{x:7,y:10}];
+  dir={x:1,y:0}; dirQueue=[];
+  score=0; eaten=0; speed=1; particles=[];
+  gold=null; goldTimer=0;
+  spawnFood();
+  updateHud();
+}
+function updateHud(){
+  scoreEl.textContent=score;
+  lenEl.textContent=snake.length;
+  levelEl.textContent=speed;
+  bestEl.textContent=best;
+}
+function currentInterval(){
+  // speed 1 = 160ms, each level -12ms, floor 70ms
+  return Math.max(70, 165 - (speed-1)*13);
+}
+function setDirection(nx,ny){
+  var last = dirQueue.length? dirQueue[dirQueue.length-1] : dir;
+  if(last.x===-nx && last.y===-ny) return; // no 180 turn
+  if(last.x===nx && last.y===ny) return;
+  if(dirQueue.length<3) dirQueue.push({x:nx,y:ny});
+}
+function step(){
+  if(dirQueue.length) dir=dirQueue.shift();
+  var head={x:snake[0].x+dir.x, y:snake[0].y+dir.y};
+  // wall collision
+  if(head.x<0||head.x>=COLS||head.y<0||head.y>=ROWS){ gameOver(); return; }
+  // self collision (tail will move away unless eating, be lenient: check all but last if not eating)
+  var willEat = (food && head.x===food.x && head.y===food.y) || (gold && head.x===gold.x && head.y===gold.y);
+  var bodyToCheck = willEat? snake : snake.slice(0,snake.length-1);
+  for(var i=0;i<bodyToCheck.length;i++){
+    if(bodyToCheck[i].x===head.x && bodyToCheck[i].y===head.y){ gameOver(); return; }
+  }
+  snake.unshift(head);
+  if(food && head.x===food.x && head.y===food.y){
+    score+=10; eaten++;
+    burst(head.x,head.y,'#e74c3c');
+    sndEat();
+    spawnFood();
+    maybeSpawnGold();
+    if(eaten%5===0){ speed++; }
+  } else if(gold && head.x===gold.x && head.y===gold.y){
+    score+=30; eaten++;
+    burst(head.x,head.y,'#f1c40f');
+    sndGold();
+    gold=null; goldTimer=0;
+    if(eaten%5===0){ speed++; }
+  } else {
+    snake.pop();
+  }
+  if(gold){
+    goldTimer--;
+    if(goldTimer<=0) gold=null;
+  }
+  if(score>best){ best=score; try{localStorage.setItem('snake_best',String(best));}catch(e){} }
+  updateHud();
+  draw();
+  schedule();
+}
+function schedule(){
+  if(!running||paused) return;
+  clearTimeout(timerId);
+  timerId=setTimeout(step, currentInterval());
+}
+function burst(gx,gy,color){
+  var c=cell();
+  for(var i=0;i<10;i++){
+    particles.push({x:gx*c+c/2,y:gy*c+c/2,vx:(Math.random()-0.5)*3,vy:(Math.random()-0.5)*3,life:14,color:color,r:2+Math.random()*3});
+  }
+}
+function draw(){
+  var c=cell(), W=canvas.width, H=canvas.height;
+  // grass checkerboard
+  for(var x=0;x<COLS;x++) for(var y=0;y<ROWS;y++){
+    ctx.fillStyle=((x+y)%2===0)?'#8bc34a':'#7cb342';
+    ctx.fillRect(x*c,y*c,c,c);
+  }
+  // subtle border vignette
+  ctx.strokeStyle='rgba(46,80,22,0.35)'; ctx.lineWidth=4; ctx.strokeRect(2,2,W-4,H-4);
+  // particles (update+draw)
+  particles=particles.filter(function(p){return p.life>0;});
+  particles.forEach(function(p){ p.x+=p.vx; p.y+=p.vy; p.life--; ctx.globalAlpha=Math.max(0,p.life/14); ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); });
+  ctx.globalAlpha=1;
+  // food: apple
+  if(food) drawApple(food.x,food.y,c,false);
+  if(gold) drawApple(gold.x,gold.y,c,true);
+  // snake body: draw from tail to head, rounded segments with gradient by position
+  for(var i=snake.length-1;i>=0;i--){
+    var s=snake[i], cx=s.x*c, cy=s.y*c;
+    var t=i/Math.max(1,snake.length-1);
+    var r=Math.round(46+30*(1-t)), g=Math.round(160+40*(1-t)), b=Math.round(60);
+    ctx.fillStyle='rgb('+r+','+g+','+b+')';
+    var pad=i===0?1:2.5;
+    roundRect(cx+pad,cy+pad,c-pad*2,c-pad*2, i===0?9:8); ctx.fill();
+    // belly highlight on body segments
+    if(i>0 && i%2===0){
+      ctx.fillStyle='rgba(255,255,255,0.18)';
+      roundRect(cx+c*0.28,cy+c*0.28,c*0.44,c*0.22,5); ctx.fill();
+    }
+  }
+  // head details
+  if(snake.length){
+    var h=snake[0], hx=h.x*c, hy=h.y*c;
+    // tongue when moving right/left etc - simple: draw eyes based on dir
+    ctx.fillStyle='#fff';
+    var e1, e2;
+    if(dir.x===1){ e1={x:hx+c*0.62,y:hy+c*0.30}; e2={x:hx+c*0.62,y:hy+c*0.70}; }
+    else if(dir.x===-1){ e1={x:hx+c*0.38,y:hy+c*0.30}; e2={x:hx+c*0.38,y:hy+c*0.70}; }
+    else if(dir.y===1){ e1={x:hx+c*0.30,y:hy+c*0.62}; e2={x:hx+c*0.70,y:hy+c*0.62}; }
+    else { e1={x:hx+c*0.30,y:hy+c*0.38}; e2={x:hx+c*0.70,y:hy+c*0.38}; }
+    [e1,e2].forEach(function(e){
+      ctx.beginPath(); ctx.arc(e.x,e.y,c*0.14,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#1a1a1a'; ctx.beginPath(); ctx.arc(e.x+dir.x*c*0.04,e.y+dir.y*c*0.04,c*0.07,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#fff';
+    });
+    // tongue
+    ctx.strokeStyle='#e74c3c'; ctx.lineWidth=2;
+    ctx.beginPath();
+    var tx=hx+c/2+dir.x*c*0.52, ty=hy+c/2+dir.y*c*0.52;
+    ctx.moveTo(hx+c/2+dir.x*c*0.34, hy+c/2+dir.y*c*0.34);
+    ctx.lineTo(tx,ty); ctx.stroke();
+  }
+}
+function roundRect(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+function drawApple(gx,gy,c,isGold){
+  var cx=gx*c+c/2, cy=gy*c+c/2+2, rad=c*0.36;
+  // body
+  var grad=ctx.createRadialGradient(cx-rad*0.3,cy-rad*0.3,rad*0.2,cx,cy,rad);
+  if(isGold){ grad.addColorStop(0,'#ffe082'); grad.addColorStop(1,'#f39c12'); }
+  else { grad.addColorStop(0,'#ff8a80'); grad.addColorStop(1,'#c0392b'); }
+  ctx.fillStyle=grad;
+  ctx.beginPath(); ctx.arc(cx,cy,rad,0,Math.PI*2); ctx.fill();
+  // highlight
+  ctx.fillStyle='rgba(255,255,255,0.55)';
+  ctx.beginPath(); ctx.arc(cx-rad*0.35,cy-rad*0.35,rad*0.22,0,Math.PI*2); ctx.fill();
+  // stem + leaf
+  ctx.strokeStyle='#6d4c41'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(cx,cy-rad*0.85); ctx.quadraticCurveTo(cx+2,cy-rad*1.15,cx+5,cy-rad*1.2); ctx.stroke();
+  ctx.fillStyle=isGold?'#f1c40f':'#27ae60';
+  ctx.beginPath(); ctx.ellipse(cx+rad*0.42,cy-rad*0.95,rad*0.32,rad*0.16,-0.5,0,Math.PI*2); ctx.fill();
+  if(isGold){
+    ctx.fillStyle='#fff'; ctx.font='bold '+Math.round(c*0.5)+'px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    // blink when expiring
+    if(!(goldTimer<12 && Math.floor(goldTimer/3)%2===0)){
+      ctx.fillText('★',cx,cy+1);
+    }
+  }
+}
+
+function startGame(){
+  reset();
+  running=true; paused=false;
+  overlay.classList.add('hidden');
+  document.getElementById('pauseBtn').textContent='⏸ 暂停';
+  draw();
+  schedule();
+  beep(523,0.1,'sine',0.07);
+}
+function gameOver(){
+  running=false; clearTimeout(timerId);
+  sndDie();
+  draw();
+  ovTitle.textContent='游戏结束 💥';
+  var stars = score>=150?'⭐⭐⭐':(score>=80?'⭐⭐':(score>=30?'⭐':''));
+  ovText.innerHTML='本局得分 <b>'+score+'</b> · 长度 '+snake.length+' · 最高分 '+best+'<br>'+(stars?('评价 '+stars+'<br>'):'')+(score>=best&&score>0?'🎉 新纪录！':'再接再厉，绕大圈更稳哦。');
+  startBtn.textContent='再来一局';
+  overlay.classList.remove('hidden');
+}
+function togglePause(){
+  if(!running) return;
+  paused=!paused;
+  document.getElementById('pauseBtn').textContent=paused?'▶ 继续':'⏸ 暂停';
+  if(!paused) schedule(); else clearTimeout(timerId);
+}
+
+startBtn.addEventListener('click',startGame);
+document.getElementById('restartBtn').addEventListener('click',startGame);
+document.getElementById('pauseBtn').addEventListener('click',togglePause);
+document.getElementById('soundBtn').addEventListener('click',function(){
+  soundOn=!soundOn; this.textContent=soundOn?'🔊 音效开':'🔇 音效关';
+});
+
+document.addEventListener('keydown',function(e){
+  var k=e.key.toLowerCase();
+  if(k===' '){ e.preventDefault(); if(running) togglePause(); else startGame(); return; }
+  if(k==='arrowup'||k==='w'){ setDirection(0,-1); e.preventDefault(); }
+  else if(k==='arrowdown'||k==='s'){ setDirection(0,1); e.preventDefault(); }
+  else if(k==='arrowleft'||k==='a'){ setDirection(-1,0); e.preventDefault(); }
+  else if(k==='arrowright'||k==='d'){ setDirection(1,0); e.preventDefault(); }
+});
+
+// D-pad
+document.querySelectorAll('.dpad button[data-dir]').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    var d=btn.getAttribute('data-dir');
+    if(d==='up') setDirection(0,-1); else if(d==='down') setDirection(0,1);
+    else if(d==='left') setDirection(-1,0); else if(d==='right') setDirection(1,0);
+  });
+});
+// Swipe on canvas
+var touchStart=null;
+canvas.addEventListener('touchstart',function(e){ touchStart={x:e.touches[0].clientX,y:e.touches[0].clientY}; },{passive:true});
+canvas.addEventListener('touchmove',function(e){
+  if(!touchStart) return;
+  var dx=e.touches[0].clientX-touchStart.x, dy=e.touches[0].clientY-touchStart.y;
+  if(Math.abs(dx)<24 && Math.abs(dy)<24) return;
+  if(Math.abs(dx)>Math.abs(dy)) setDirection(dx>0?1:-1,0); else setDirection(0,dy>0?1:-1);
+  touchStart={x:e.touches[0].clientX,y:e.touches[0].clientY};
+  e.preventDefault();
+},{passive:false});
+canvas.addEventListener('touchend',function(){ touchStart=null; });
+
+// initial render
+reset();
+draw();
+})();
+</script>
+</body>
+</html>
