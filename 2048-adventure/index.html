@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>2048 数字大冒险 · 游戏小站</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(165deg,#faf3e3,#f3e2c7 55%,#eecfa3);min-height:100vh;color:#776e65;padding:14px 12px 28px}
+.topbar{max-width:460px;margin:0 auto;display:flex;justify-content:space-between;align-items:center}
+.back{color:#8f7a66;text-decoration:none;font-weight:700;font-size:14px;background:rgba(255,255,255,.65);padding:8px 14px;border-radius:999px;box-shadow:0 2px 8px rgba(119,110,101,.15)}
+.sound-btn{border:none;background:rgba(255,255,255,.65);width:38px;height:38px;border-radius:50%;font-size:18px;cursor:pointer;box-shadow:0 2px 8px rgba(119,110,101,.15)}
+.wrap{max-width:460px;margin:0 auto}
+header{text-align:center;margin:14px 0 6px}
+header h1{font-size:44px;letter-spacing:2px;color:#776e65}
+header h1 span{color:#ed8c2f}
+header p{font-size:13.5px;color:#a08b74;line-height:1.7;margin-top:4px}
+.scores{display:flex;gap:8px;justify-content:center;margin:12px 0}
+.score-box{background:#bbada0;color:#fff;border-radius:10px;padding:8px 6px;min-width:86px;text-align:center;box-shadow:inset 0 -3px 0 rgba(0,0,0,.08)}
+.score-box .label{font-size:11px;letter-spacing:2px;color:#eee4da;font-weight:700}
+.score-box .val{font-size:24px;font-weight:800;line-height:1.15}
+.actions{display:flex;gap:8px;justify-content:center;margin-bottom:14px}
+.btn{border:none;cursor:pointer;background:#8f7a66;color:#f9f6f2;font-weight:800;font-size:15px;padding:11px 22px;border-radius:10px;box-shadow:0 3px 0 #6f5d4c;transition:.12s}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #6f5d4c}
+.btn.alt{background:#ed8c2f;box-shadow:0 3px 0 #c96f1d}
+.btn.alt:active{box-shadow:0 1px 0 #c96f1d}
+.btn:disabled{opacity:.45;cursor:default;transform:none}
+.board-wrap{position:relative;width:min(92vw,420px);margin:0 auto;aspect-ratio:1/1}
+.board{position:absolute;inset:0;background:#bbada0;border-radius:14px;padding:10px;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:10px;box-shadow:0 14px 34px rgba(119,110,101,.35);touch-action:none;user-select:none}
+.cell{background:rgba(238,228,218,.35);border-radius:9px;display:flex;align-items:center;justify-content:center}
+.tile{width:100%;height:100%;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#776e65;box-shadow:inset 0 -4px 0 rgba(0,0,0,.08);font-size:clamp(22px,8vw,38px)}
+.tile.small{font-size:clamp(19px,7vw,32px)}
+.tile.tiny{font-size:clamp(15px,5.6vw,26px)}
+.v2{background:#eee4da}.v4{background:#ede0c8}
+.v8{background:#f2b179;color:#f9f6f2}.v16{background:#f59563;color:#f9f6f2}
+.v32{background:#f67c5f;color:#f9f6f2}.v64{background:#f65e3b;color:#f9f6f2}
+.v128{background:#edcf72;color:#f9f6f2;box-shadow:inset 0 -4px 0 rgba(0,0,0,.08),0 0 18px rgba(237,207,114,.65)}
+.v256{background:#edcc61;color:#f9f6f2;box-shadow:inset 0 -4px 0 rgba(0,0,0,.08),0 0 20px rgba(237,204,97,.7)}
+.v512{background:#edc850;color:#f9f6f2;box-shadow:inset 0 -4px 0 rgba(0,0,0,.08),0 0 22px rgba(237,200,80,.75)}
+.v1024{background:#edc53f;color:#f9f6f2;box-shadow:inset 0 -4px 0 rgba(0,0,0,.08),0 0 24px rgba(237,197,63,.8)}
+.v2048{background:#edc22e;color:#fff;box-shadow:inset 0 -4px 0 rgba(0,0,0,.1),0 0 30px rgba(237,194,46,.95)}
+.vsuper{background:#3c3a32;color:#f9f6f2}
+@keyframes appear{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes pop{0%{transform:scale(0)}55%{transform:scale(1.18)}100%{transform:scale(1)}}
+.tile.new{animation:appear .16s ease both}
+.tile.merged{animation:pop .2s ease both}
+.overlay{position:absolute;inset:0;border-radius:14px;background:rgba(238,228,218,.78);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:20px;z-index:5}
+.overlay.show{display:flex}
+.overlay h2{font-size:34px;color:#776e65}
+.overlay p{font-size:14px;color:#8f7a66;line-height:1.7}
+.dpad{display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(2,56px);gap:8px;justify-content:center;margin:18px auto 4px}
+.dpad button{border:none;border-radius:14px;background:#cdc1b4;color:#776e65;font-size:24px;font-weight:800;cursor:pointer;box-shadow:0 3px 0 #a89a89}
+.dpad button:active{transform:translateY(2px);box-shadow:0 1px 0 #a89a89;background:#bbada0;color:#fff}
+.dpad .sp{visibility:hidden}
+.tip{text-align:center;font-size:12.5px;color:#a08b74;line-height:1.9;margin-top:10px}
+.tip b{color:#8f7a66}
+footer{text-align:center;margin-top:14px;font-size:12px;color:#b3a08b}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="back" href="../">← 回主页</a>
+  <button class="sound-btn" id="soundBtn" aria-label="音效开关">🔊</button>
+</div>
+<div class="wrap">
+  <header>
+    <h1>2048 <span>大冒险</span></h1>
+    <p>滑动合并相同的数字，一路冲到 2048！<br>把大数字留在角落，是稳赢的小秘诀。</p>
+  </header>
+  <div class="scores">
+    <div class="score-box"><div class="label">分数</div><div class="val" id="score">0</div></div>
+    <div class="score-box"><div class="label">最高分</div><div class="val" id="best">0</div></div>
+    <div class="score-box"><div class="label">最大数字</div><div class="val" id="maxTile">0</div></div>
+    <div class="score-box"><div class="label">步数</div><div class="val" id="moves">0</div></div>
+  </div>
+  <div class="actions">
+    <button class="btn alt" id="newBtn">↻ 新对局</button>
+    <button class="btn" id="undoBtn">↩ 悔一步</button>
+  </div>
+  <div class="board-wrap">
+    <div class="board" id="board"></div>
+    <div class="overlay" id="overlay">
+      <h2 id="ovTitle">游戏结束</h2>
+      <p id="ovText"></p>
+      <button class="btn alt" id="ovBtn">再来一局</button>
+      <button class="btn" id="ovContinue" style="display:none">继续挑战 →</button>
+    </div>
+  </div>
+  <div class="dpad" aria-label="方向键">
+    <span class="sp"></span><button data-dir="up" aria-label="上">↑</button><span class="sp"></span>
+    <button data-dir="left" aria-label="左">←</button><button data-dir="down" aria-label="下">↓</button><button data-dir="right" aria-label="右">→</button>
+  </div>
+  <p class="tip"><b>操作：</b>手机在棋盘上滑动，或点下方大方向键；电脑用方向键 / WASD。<br>两个相同数字撞在一起就会合并翻倍，棋盘填满且无处可合就结束啦。</p>
+  <footer>纯网页小游戏 · 最高分保存在本机</footer>
+</div>
+<script>
+"use strict";
+var SIZE = 4, N = 16;
+var board = [], score = 0, moves = 0, best = 0, won = false, keepGoing = false, over = false;
+var prevState = null, soundOn = true, audioCtx = null;
+try { best = parseInt(localStorage.getItem("g2048-best") || "0", 10) || 0; } catch (e) { best = 0; }
+
+var boardEl = document.getElementById("board");
+var scoreEl = document.getElementById("score"), bestEl = document.getElementById("best");
+var maxEl = document.getElementById("maxTile"), movesEl = document.getElementById("moves");
+var overlay = document.getElementById("overlay"), ovTitle = document.getElementById("ovTitle"), ovText = document.getElementById("ovText");
+var undoBtn = document.getElementById("undoBtn"), ovContinue = document.getElementById("ovContinue");
+
+function beep(freq, dur) {
+  if (!soundOn) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = "sine"; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + dur);
+  } catch (e) {}
+}
+function emptyCells() { var r = []; for (var i = 0; i < N; i++) if (board[i] === 0) r.push(i); return r; }
+function addRandom() {
+  var e = emptyCells(); if (!e.length) return -1;
+  var idx = e[Math.floor(Math.random() * e.length)];
+  board[idx] = Math.random() < 0.9 ? 2 : 4;
+  return idx;
+}
+function maxTile() { var m = 0; for (var i = 0; i < N; i++) if (board[i] > m) m = board[i]; return m; }
+
+var lastNew = -1, lastMerged = {};
+function render() {
+  boardEl.innerHTML = "";
+  for (var i = 0; i < N; i++) {
+    var cell = document.createElement("div"); cell.className = "cell";
+    if (board[i] !== 0) {
+      var t = document.createElement("div");
+      var v = board[i];
+      t.className = "tile " + (v > 2048 ? "vsuper" : "v" + v);
+      if (v >= 100) t.classList.add("small");
+      if (v >= 1000) t.classList.add("tiny");
+      if (i === lastNew) t.classList.add("new");
+      if (lastMerged[i]) t.classList.add("merged");
+      t.textContent = v;
+      cell.appendChild(t);
+    }
+    boardEl.appendChild(cell);
+  }
+  scoreEl.textContent = score;
+  bestEl.textContent = best;
+  maxEl.textContent = maxTile();
+  movesEl.textContent = moves;
+  undoBtn.disabled = !prevState;
+}
+function linesFor(dir) {
+  var lines = [], r, c, line;
+  if (dir === "left") { for (r = 0; r < SIZE; r++) { line = []; for (c = 0; c < SIZE; c++) line.push(r * SIZE + c); lines.push(line); } }
+  if (dir === "right") { for (r = 0; r < SIZE; r++) { line = []; for (c = SIZE - 1; c >= 0; c--) line.push(r * SIZE + c); lines.push(line); } }
+  if (dir === "up") { for (c = 0; c < SIZE; c++) { line = []; for (r = 0; r < SIZE; r++) line.push(r * SIZE + c); lines.push(line); } }
+  if (dir === "down") { for (c = 0; c < SIZE; c++) { line = []; for (r = SIZE - 1; r >= 0; r--) line.push(r * SIZE + c); lines.push(line); } }
+  return lines;
+}
+function slideValues(vals) {
+  var arr = vals.filter(function (x) { return x !== 0; });
+  var result = [], gain = 0, mergedAt = [];
+  for (var i = 0; i < arr.length; i++) {
+    if (i + 1 < arr.length && arr[i] === arr[i + 1]) {
+      var mergedVal = arr[i] * 2;
+      result.push(mergedVal); gain += mergedVal; mergedAt.push(result.length - 1); i++;
+    } else {
+      result.push(arr[i]);
+    }
+  }
+  while (result.length < SIZE) result.push(0);
+  return { arr: result, gain: gain, mergedAt: mergedAt };
+}
+function canMove() {
+  if (emptyCells().length) return true;
+  for (var r = 0; r < SIZE; r++) for (var c = 0; c < SIZE; c++) {
+    var v = board[r * SIZE + c];
+    if (c + 1 < SIZE && board[r * SIZE + c + 1] === v) return true;
+    if (r + 1 < SIZE && board[(r + 1) * SIZE + c] === v) return true;
+  }
+  return false;
+}
+function doMove(dir) {
+  if (over) return false;
+  if (overlay.classList.contains("show") && !keepGoing) return false;
+  var before = board.slice(), beforeScore = score, beforeMoves = moves;
+  var lines = linesFor(dir), gain = 0, merged = {}, changed = false;
+  lines.forEach(function (idxs) {
+    var vals = idxs.map(function (i) { return board[i]; });
+    var res = slideValues(vals);
+    gain += res.gain;
+    res.arr.forEach(function (v, k) { if (board[idxs[k]] !== v) changed = true; board[idxs[k]] = v; });
+    res.mergedAt.forEach(function (k) { merged[idxs[k]] = true; });
+  });
+  if (!changed) { board = before; beep(140, 0.06); return false; }
+  prevState = { board: before, score: beforeScore, moves: beforeMoves, won: won };
+  score += gain; moves++;
+  if (gain > 0) beep(330 + Math.min(gain, 512) / 4, 0.09); else beep(220, 0.05);
+  lastMerged = merged;
+  lastNew = addRandom();
+  if (score > best) { best = score; try { localStorage.setItem("g2048-best", String(best)); } catch (e) {} }
+  render();
+  if (!won && maxTile() >= 2048) {
+    won = true;
+    ovTitle.textContent = "🎉 你合成 2048 啦！";
+    ovText.innerHTML = "太厉害了！本局得分 <b>" + score + "</b>，最大数字 2048。<br>可以收官重开，也可以继续冲 4096。";
+    ovContinue.style.display = "";
+    overlay.classList.add("show");
+    beep(660, 0.18); setTimeout(function () { beep(880, 0.22); }, 140);
+    return true;
+  }
+  if (!canMove()) {
+    over = true;
+    ovTitle.textContent = "棋盘满啦";
+    ovText.innerHTML = "本局得分 <b>" + score + "</b> · 最大数字 <b>" + maxTile() + "</b> · 共 " + moves + " 步" + (score >= best && score > 0 ? "<br>🏆 新纪录！" : "");
+    ovContinue.style.display = "none";
+    overlay.classList.add("show");
+    beep(180, 0.25);
+  }
+  return true;
+}
+function newGame() {
+  board = new Array(N).fill(0);
+  score = 0; moves = 0; won = false; keepGoing = false; over = false; prevState = null; lastMerged = {};
+  lastNew = addRandom(); addRandom(); lastNew = -1;
+  overlay.classList.remove("show");
+  render();
+}
+function undo() {
+  if (!prevState) return;
+  board = prevState.board; score = prevState.score; moves = prevState.moves; won = prevState.won;
+  over = false; prevState = null; lastNew = -1; lastMerged = {};
+  overlay.classList.remove("show");
+  render(); beep(260, 0.07);
+}
+document.getElementById("newBtn").addEventListener("click", newGame);
+document.getElementById("ovBtn").addEventListener("click", newGame);
+undoBtn.addEventListener("click", undo);
+ovContinue.addEventListener("click", function () { keepGoing = true; overlay.classList.remove("show"); });
+document.getElementById("soundBtn").addEventListener("click", function () {
+  soundOn = !soundOn; this.textContent = soundOn ? "🔊" : "🔇"; if (soundOn) beep(440, 0.08);
+});
+document.querySelectorAll(".dpad button").forEach(function (b) {
+  b.addEventListener("click", function () { doMove(b.getAttribute("data-dir")); });
+});
+document.addEventListener("keydown", function (e) {
+  var map = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down", a: "left", d: "right", w: "up", s: "down", A: "left", D: "right", W: "up", S: "down" };
+  var dir = map[e.key];
+  if (dir) { e.preventDefault(); doMove(dir); }
+});
+var tx = 0, ty = 0;
+boardEl.addEventListener("touchstart", function (e) { var t = e.changedTouches[0]; tx = t.clientX; ty = t.clientY; }, { passive: true });
+boardEl.addEventListener("touchmove", function (e) { e.preventDefault(); }, { passive: false });
+boardEl.addEventListener("touchend", function (e) {
+  var t = e.changedTouches[0], dx = t.clientX - tx, dy = t.clientY - ty;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+  doMove(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"));
+});
+var mx = 0, my = 0, mdown = false;
+boardEl.addEventListener("mousedown", function (e) { mdown = true; mx = e.clientX; my = e.clientY; });
+boardEl.addEventListener("mouseup", function (e) {
+  if (!mdown) return; mdown = false;
+  var dx = e.clientX - mx, dy = e.clientY - my;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+  doMove(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"));
+});
+newGame();
+</script>
+</body>
+</html>
