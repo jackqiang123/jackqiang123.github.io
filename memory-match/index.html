@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>记忆翻牌 · 游戏小站</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(165deg,#1a2a6c,#b21f1f 55%,#fdbb2d);min-height:100vh;color:#fff;padding:14px 12px 30px}
+.wrap{max-width:520px;margin:0 auto}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.top a{color:#fff;text-decoration:none;font-size:15px;font-weight:700;background:rgba(0,0,0,.28);padding:10px 14px;border-radius:999px}
+.top .sound{border:0;color:#fff;background:rgba(0,0,0,.28);font-size:15px;font-weight:700;padding:10px 14px;border-radius:999px;cursor:pointer}
+h1{text-align:center;font-size:30px;margin:14px 0 4px;text-shadow:0 3px 12px rgba(0,0,0,.4)}
+.sub{text-align:center;font-size:14px;opacity:.92;line-height:1.7}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}
+.stat{background:rgba(255,255,255,.95);color:#2d3436;border-radius:14px;padding:10px 4px;text-align:center}
+.stat b{display:block;font-size:20px}
+.stat span{font-size:12px;color:#636e72}
+.controls{display:flex;gap:10px;margin-bottom:14px}
+.controls button{flex:1;border:0;border-radius:14px;padding:14px 6px;font-size:16px;font-weight:800;cursor:pointer}
+#restart{background:#ffeaa7;color:#2d3436}
+#hint{background:#74b9ff;color:#fff}
+#hint:disabled{opacity:.5}
+.board{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;perspective:900px}
+.card{aspect-ratio:1;border:0;border-radius:16px;cursor:pointer;position:relative;transform-style:preserve-3d;transition:transform .45s;padding:0;background:transparent}
+.card .face{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:16px;backface-visibility:hidden;-webkit-backface-visibility:hidden;box-shadow:0 6px 16px rgba(0,0,0,.3)}
+.card .back{background:linear-gradient(135deg,#6c5ce7,#00cec9);font-size:34px}
+.card .front{background:#fff;transform:rotateY(180deg);font-size:40px}
+.card.flipped{transform:rotateY(180deg)}
+.card.matched .front{background:#dfe6e9;box-shadow:0 0 0 3px #00b894,0 6px 16px rgba(0,0,0,.3)}
+.card.matched{cursor:default}
+.card.hint-glow .front{box-shadow:0 0 0 4px #fdcb6e}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:10;align-items:center;justify-content:center;padding:20px}
+.overlay.show{display:flex}
+.box{background:#fff;color:#2d3436;border-radius:20px;padding:26px 22px;text-align:center;max-width:380px;width:100%}
+.box h2{font-size:26px;margin-bottom:10px}
+.box p{line-height:2;font-size:15px}
+.box button{margin-top:14px;border:0;background:#6c5ce7;color:#fff;font-size:17px;font-weight:800;padding:14px 26px;border-radius:999px;cursor:pointer;width:100%}
+.tip{text-align:center;font-size:13px;opacity:.85;margin-top:14px;line-height:1.8}
+@media(max-width:380px){.card .front{font-size:34px}.card .back{font-size:30px}h1{font-size:27px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a href="../">← 回主页</a><button class="sound" id="soundBtn" type="button">🔊 音效开</button></div>
+  <h1>🧠 记忆翻牌</h1>
+  <p class="sub">翻开两张牌，找出 8 对相同的小动物。<br>翻得越少、用时越短，星级越高！</p>
+  <div class="stats">
+    <div class="stat"><b id="time">0:00</b><span>用时</span></div>
+    <div class="stat"><b id="moves">0</b><span>翻牌次数</span></div>
+    <div class="stat"><b id="pairs">0 / 8</b><span>已配对</span></div>
+    <div class="stat"><b id="score">0</b><span>分数</span></div>
+  </div>
+  <div class="controls">
+    <button id="restart" type="button">🔄 重新开始</button>
+    <button id="hint" type="button">💡 提示（剩 3 次）</button>
+  </div>
+  <div class="board" id="board" aria-label="记忆翻牌棋盘"></div>
+  <p class="tip">操作：点按 / 触摸翻牌，也可用 Tab 切换焦点、按回车或空格翻牌。<br>配对 +100 分，翻错不扣分；提示会短暂亮出一对未配对的牌。</p>
+</div>
+<div class="overlay" id="overlay"><div class="box">
+  <h2 id="winTitle">🎉 全部找齐啦！</h2>
+  <p id="winText"></p>
+  <button id="again" type="button">再玩一局</button>
+</div></div>
+<script>
+const EMOJIS = ['🐶','🐱','🐰','🦊','🐼','🦁','🐸','🐵'];
+let cards = [], first = null, second = null, lock = false;
+let moves = 0, matched = 0, score = 0, hints = 3;
+let seconds = 0, timer = null, started = false, soundOn = true;
+const board = document.getElementById('board');
+const timeEl = document.getElementById('time');
+const movesEl = document.getElementById('moves');
+const pairsEl = document.getElementById('pairs');
+const scoreEl = document.getElementById('score');
+const hintBtn = document.getElementById('hint');
+const overlay = document.getElementById('overlay');
+const winText = document.getElementById('winText');
+
+function beep(freq, ms) {
+  if (!soundOn) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.12, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + ms / 1000);
+    o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime + ms / 1000);
+  } catch (e) {}
+}
+function fmt(s) { return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+function renderStats() {
+  timeEl.textContent = fmt(seconds);
+  movesEl.textContent = moves;
+  pairsEl.textContent = matched + ' / 8';
+  scoreEl.textContent = score;
+  hintBtn.textContent = '💡 提示（剩 ' + hints + ' 次）';
+  hintBtn.disabled = hints <= 0 || matched >= 8;
+}
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function startTimer() {
+  if (started) return;
+  started = true;
+  timer = setInterval(() => { seconds++; renderStats(); }, 1000);
+}
+function stopTimer() { if (timer) { clearInterval(timer); timer = null; } }
+function newGame() {
+  stopTimer();
+  const deck = shuffle(EMOJIS.concat(EMOJIS).map((e, i) => ({ emoji: e, id: i })));
+  cards = deck; first = null; second = null; lock = false;
+  moves = 0; matched = 0; score = 0; hints = 3; seconds = 0; started = false;
+  overlay.classList.remove('show');
+  board.innerHTML = '';
+  deck.forEach((c, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'card'; btn.type = 'button';
+    btn.setAttribute('aria-label', '第 ' + (idx + 1) + ' 张牌');
+    btn.innerHTML = '<span class="face back">❓</span><span class="face front">' + c.emoji + '</span>';
+    btn.addEventListener('click', () => flip(idx, btn));
+    board.appendChild(btn);
+  });
+  renderStats();
+}
+function flip(idx, btn) {
+  if (lock) return;
+  const c = cards[idx];
+  if (c.done || c.open) return;
+  startTimer();
+  c.open = true; btn.classList.add('flipped'); beep(520, 90);
+  if (!first) { first = { idx, btn, emoji: c.emoji }; return; }
+  second = { idx, btn, emoji: c.emoji };
+  moves++; renderStats();
+  if (first.emoji === second.emoji) {
+    cards[first.idx].done = true; cards[second.idx].done = true;
+    first.btn.classList.add('matched'); second.btn.classList.add('matched');
+    matched++; score += 100; beep(880, 160); renderStats();
+    first = null; second = null;
+    if (matched === 8) win();
+  } else {
+    lock = true;
+    setTimeout(() => {
+      cards[first.idx].open = false; cards[second.idx].open = false;
+      first.btn.classList.remove('flipped'); second.btn.classList.remove('flipped');
+      first = null; second = null; lock = false;
+    }, 700);
+  }
+}
+function stars() {
+  if (moves <= 14 && seconds <= 90) return '⭐⭐⭐';
+  if (moves <= 20 && seconds <= 150) return '⭐⭐';
+  return '⭐';
+}
+function win() {
+  stopTimer();
+  const bonus = Math.max(0, 300 - seconds);
+  score += bonus; renderStats();
+  const bestKey = 'memory-match-best';
+  let best = null;
+  try { best = JSON.parse(localStorage.getItem(bestKey) || 'null'); } catch (e) {}
+  const isBest = !best || seconds < best.seconds;
+  if (isBest) { try { localStorage.setItem(bestKey, JSON.stringify({ seconds, moves })); } catch (e) {} }
+  winText.innerHTML = '用时 ' + fmt(seconds) + ' · 翻牌 ' + moves + ' 次 · 分数 ' + score + ' 分（含时间奖励 +' + bonus + '）<br>评级：' + stars() + (isBest ? '<br>🏆 新纪录！最快用时' : (best ? '<br>最快纪录：' + fmt(best.seconds) : ''));
+  overlay.classList.add('show');
+  beep(1040, 220);
+}
+function useHint() {
+  if (hints <= 0 || lock || matched >= 8) return;
+  const open = cards.filter(c => !c.done);
+  const byEmoji = {};
+  let pair = null;
+  for (const c of open) {
+    if (byEmoji[c.emoji]) { pair = [byEmoji[c.emoji], c]; break; }
+    byEmoji[c.emoji] = c;
+  }
+  if (!pair) return;
+  hints--;
+  const btns = Array.from(board.children);
+  pair.forEach(c => {
+    const i = cards.indexOf(c);
+    btns[i].classList.add('hint-glow');
+    setTimeout(() => btns[i].classList.remove('hint-glow'), 1200);
+  });
+  renderStats();
+}
+document.getElementById('restart').addEventListener('click', newGame);
+document.getElementById('again').addEventListener('click', newGame);
+hintBtn.addEventListener('click', useHint);
+document.getElementById('soundBtn').addEventListener('click', (e) => {
+  soundOn = !soundOn;
+  e.target.textContent = soundOn ? '🔊 音效开' : '🔇 音效关';
+});
+board.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const btn = document.activeElement;
+  if (btn && btn.classList.contains('card')) { e.preventDefault(); btn.click(); }
+});
+newGame();
+</script>
+</body>
+</html>
