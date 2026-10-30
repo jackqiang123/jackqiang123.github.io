@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>扫雷大冒险 · 游戏小站</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(160deg,#1b4332,#2d6a4f 60%,#40916c);min-height:100vh;color:#fff;padding:14px 10px 30px}
+  .wrap{max-width:520px;margin:0 auto}
+  .back{display:inline-block;color:#d8f3dc;text-decoration:none;font-size:15px;font-weight:700;padding:6px 2px}
+  h1{text-align:center;font-size:26px;margin:6px 0 2px;text-shadow:0 2px 10px rgba(0,0,0,.35)}
+  .sub{text-align:center;color:#d8f3dc;font-size:13px;margin-bottom:12px}
+  .panel{background:rgba(255,255,255,.96);color:#2d3436;border-radius:18px;padding:14px;box-shadow:0 12px 30px rgba(0,0,0,.3)}
+  .diffs{display:flex;gap:8px;margin-bottom:12px}
+  .diffs button{flex:1;border:2px solid #b2dfdb;background:#fff;color:#2d3436;border-radius:12px;padding:10px 4px;font-size:14px;font-weight:700;cursor:pointer}
+  .diffs button.on{background:#2d6a4f;color:#fff;border-color:#2d6a4f}
+  .stats{display:flex;gap:8px;margin-bottom:12px}
+  .stat{flex:1;background:#f1f8f5;border-radius:12px;padding:8px 4px;text-align:center}
+  .stat b{display:block;font-size:20px}
+  .stat span{font-size:11px;color:#636e72}
+  .tools{display:flex;gap:8px;margin-bottom:12px}
+  .tools button{flex:1;border:none;border-radius:12px;padding:12px 4px;font-size:15px;font-weight:800;cursor:pointer}
+  #modeBtn{background:#fdcb6e;color:#2d3436}
+  #modeBtn.flag{background:#e17055;color:#fff}
+  #hintBtn{background:#74b9ff;color:#fff}
+  #hintBtn:disabled,#restartBtn:disabled{opacity:.45}
+  #restartBtn{background:#00b894;color:#fff}
+  #soundBtn{background:#dfe6e9;color:#2d3436;flex:0 0 52px}
+  .board{--cols:9;display:grid;grid-template-columns:repeat(var(--cols),1fr);gap:3px;background:#95a5a6;padding:4px;border-radius:12px;touch-action:none;user-select:none;-webkit-user-select:none}
+  .cell{aspect-ratio:1/1;border:none;border-radius:6px;font-size:19px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,#a8e6a1,#74c69d);color:#2d3436;box-shadow:inset 0 -3px 0 rgba(0,0,0,.15)}
+  .cell:active{filter:brightness(.92)}
+  .cell.open{background:#f5f6fa;box-shadow:inset 0 0 0 1px #dfe6e9;cursor:default}
+  .cell.open:active{filter:none}
+  .cell.boom{background:#ff7675}
+  .cell.wrongflag{background:#fab1a0;text-decoration:line-through}
+  .cell.hintflash{outline:3px solid #fdcb6e;outline-offset:-3px}
+  .n1{color:#0984e3}.n2{color:#00b894}.n3{color:#d63031}.n4{color:#2d3436}.n5{color:#6c5ce7}.n6{color:#e17055}.n7{color:#636e72}.n8{color:#b2bec3}
+  .msg{text-align:center;min-height:26px;font-weight:800;font-size:15px;margin-top:12px;color:#2d3436}
+  .msg.win{color:#00b894}.msg.lose{color:#d63031}
+  .best{text-align:center;font-size:12.5px;color:#636e72;margin-top:4px}
+  .help{background:rgba(255,255,255,.14);border-radius:14px;padding:12px 14px;margin-top:14px;font-size:13px;line-height:1.9;color:#eafaf1}
+  .help b{color:#ffeaa7}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../">← 回主页</a>
+  <h1>💣 扫雷大冒险</h1>
+  <p class="sub">经典扫雷精致版 · 第一次点开永远安全 · 空白区自动展开</p>
+  <div class="panel">
+    <div class="diffs" id="diffs">
+      <button data-d="easy" class="on">🌱 初级 9×9 · 10雷</button>
+      <button data-d="medium">🌿 中级 12×12 · 24雷</button>
+      <button data-d="hard">🌳 高级 14×14 · 40雷</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="mineLeft">10</b><span>剩余雷数</span></div>
+      <div class="stat"><b id="timer">0s</b><span>用时</span></div>
+      <div class="stat"><b id="flagCount">0</b><span>已插旗</span></div>
+    </div>
+    <div class="tools">
+      <button id="modeBtn">⛏️ 挖开模式</button>
+      <button id="hintBtn">💡 提示 <span id="hintLeft">3</span></button>
+      <button id="restartBtn">🔄 重开</button>
+      <button id="soundBtn" title="音效开关">🔊</button>
+    </div>
+    <div class="board" id="board"></div>
+    <div class="msg" id="msg">点一个格子开始！数字 = 周围 8 格的地雷数</div>
+    <div class="best" id="best">本难度最快纪录：暂无</div>
+  </div>
+  <div class="help">
+    <b>怎么玩：</b>点格子挖开，数字告诉你周围有几颗雷；觉得某格是雷就切到 🚩 插旗模式标记它（电脑上右键也行，手机上长按格子也能插旗）。<br>
+    <b>省力小技巧：</b>空白格会自动连片展开；点已挖开的数字，若周围旗数已够，会自动帮你挖开其余邻格；卡住了就用 💡 提示（每局 3 次，会安全挖开一格）。
+  </div>
+</div>
+<script>
+var DIFFS = {
+  easy:   {rows: 9,  cols: 9,  mines: 10, par: 60},
+  medium: {rows: 12, cols: 12, mines: 24, par: 150},
+  hard:   {rows: 14, cols: 14, mines: 40, par: 300}
+};
+var diff = 'easy', board = [], started = false, over = false, won = false;
+var flags = 0, revealed = 0, hints = 3, seconds = 0, timerId = null;
+var flagMode = false, soundOn = true, suppressClick = false, longTimer = null;
+
+var boardEl = document.getElementById('board');
+var mineLeftEl = document.getElementById('mineLeft');
+var timerEl = document.getElementById('timer');
+var flagCountEl = document.getElementById('flagCount');
+var msgEl = document.getElementById('msg');
+var bestEl = document.getElementById('best');
+var hintLeftEl = document.getElementById('hintLeft');
+var modeBtn = document.getElementById('modeBtn');
+var hintBtn = document.getElementById('hintBtn');
+
+function beep(freq, dur, type) {
+  if (!soundOn) return;
+  try {
+    var ctx = beep.ctx || (beep.ctx = new (window.AudioContext || window.webkitAudioContext)());
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type || 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.12, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime + dur);
+  } catch (e) {}
+}
+function bestKey() { return 'minesweeper-best-' + diff; }
+function showBest() {
+  var b = localStorage.getItem(bestKey());
+  bestEl.textContent = b ? ('本难度最快纪录：' + b + 's') : '本难度最快纪录：暂无';
+}
+
+function newGame() {
+  var d = DIFFS[diff];
+  board = [];
+  for (var r = 0; r < d.rows; r++) {
+    var row = [];
+    for (var c = 0; c < d.cols; c++) row.push({mine: false, open: false, flag: false, n: 0});
+    board.push(row);
+  }
+  started = false; over = false; won = false;
+  flags = 0; revealed = 0; hints = 3; seconds = 0;
+  stopTimer(); timerEl.textContent = '0s';
+  flagMode = false; syncModeBtn();
+  hintBtn.disabled = false; hintLeftEl.textContent = '3';
+  msgEl.textContent = '点一个格子开始！数字 = 周围 8 格的地雷数';
+  msgEl.className = 'msg';
+  boardEl.style.setProperty('--cols', d.cols);
+  render(); updateStats(); showBest();
+}
+
+function placeMines(safeR, safeC) {
+  var d = DIFFS[diff], placed = 0;
+  var forbidden = {};
+  for (var dr = -1; dr <= 1; dr++) for (var dc = -1; dc <= 1; dc++) {
+    var rr = safeR + dr, cc = safeC + dc;
+    if (rr >= 0 && rr < d.rows && cc >= 0 && cc < d.cols) forbidden[rr + ',' + cc] = true;
+  }
+  while (placed < d.mines) {
+    var r = Math.floor(Math.random() * d.rows), c = Math.floor(Math.random() * d.cols);
+    if (forbidden[r + ',' + c] || board[r][c].mine) continue;
+    board[r][c].mine = true; placed++;
+  }
+  for (var r2 = 0; r2 < d.rows; r2++) for (var c2 = 0; c2 < d.cols; c2++) {
+    if (board[r2][c2].mine) continue;
+    var n = 0;
+    neighbors(r2, c2).forEach(function (p) { if (board[p[0]][p[1]].mine) n++; });
+    board[r2][c2].n = n;
+  }
+}
+
+function neighbors(r, c) {
+  var d = DIFFS[diff], out = [];
+  for (var dr = -1; dr <= 1; dr++) for (var dc = -1; dc <= 1; dc++) {
+    if (dr === 0 && dc === 0) continue;
+    var rr = r + dr, cc = c + dc;
+    if (rr >= 0 && rr < d.rows && cc >= 0 && cc < d.cols) out.push([rr, cc]);
+  }
+  return out;
+}
+
+function startTimer() {
+  if (timerId) return;
+  timerId = setInterval(function () {
+    seconds++;
+    timerEl.textContent = seconds + 's';
+  }, 1000);
+}
+function stopTimer() { if (timerId) { clearInterval(timerId); timerId = null; } }
+
+function updateStats() {
+  mineLeftEl.textContent = DIFFS[diff].mines - flags;
+  flagCountEl.textContent = flags;
+}
+
+function openCell(r, c) {
+  var cell = board[r][c];
+  if (cell.open || cell.flag) return;
+  cell.open = true; revealed++;
+  if (cell.n === 0 && !cell.mine) {
+    var stack = [[r, c]];
+    while (stack.length) {
+      var p = stack.pop();
+      neighbors(p[0], p[1]).forEach(function (q) {
+        var cc2 = board[q[0]][q[1]];
+        if (!cc2.open && !cc2.flag && !cc2.mine) {
+          cc2.open = true; revealed++;
+          if (cc2.n === 0) stack.push(q);
+        }
+      });
+    }
+  }
+}
+
+function revealAllMines(hitR, hitC) {
+  var d = DIFFS[diff];
+  for (var r = 0; r < d.rows; r++) for (var c = 0; c < d.cols; c++) {
+    if (board[r][c].mine) board[r][c].open = true;
+  }
+}
+
+function checkWin() {
+  var d = DIFFS[diff];
+  return revealed === d.rows * d.cols - d.mines;
+}
+
+function endGame(win, hitR, hitC) {
+  over = true; won = win; stopTimer();
+  if (win) {
+    var b = localStorage.getItem(bestKey());
+    if (!b || seconds < parseInt(b, 10)) localStorage.setItem(bestKey(), String(seconds));
+    var stars = hints === 3 ? (seconds <= DIFFS[diff].par ? '⭐⭐⭐' : seconds <= DIFFS[diff].par * 2 ? '⭐⭐' : '⭐')
+                : (seconds <= DIFFS[diff].par ? '⭐⭐' : '⭐');
+    msgEl.textContent = '🎉 扫雷成功！用时 ' + seconds + 's · ' + stars;
+    msgEl.className = 'msg win';
+    beep(523, 0.15); setTimeout(function () { beep(659, 0.15); }, 150);
+    setTimeout(function () { beep(784, 0.3); }, 300);
+    showBest();
+  } else {
+    revealAllMines(hitR, hitC);
+    msgEl.textContent = '💥 踩到雷了！点 🔄 重开再来一局';
+    msgEl.className = 'msg lose';
+    beep(110, 0.4, 'sawtooth');
+  }
+  hintBtn.disabled = true;
+}
+
+function actCell(r, c) {
+  if (over) return;
+  var cell = board[r][c];
+  if (flagMode) {
+    if (cell.open) return;
+    cell.flag = !cell.flag;
+    flags += cell.flag ? 1 : -1;
+    beep(440, 0.08, 'triangle');
+    updateStats(); render(); return;
+  }
+  if (cell.flag) return;
+  if (cell.open) {
+    // 和弦：已挖开的数字，周围旗数够了就自动挖开其余邻格
+    if (cell.n > 0) {
+      var ns = neighbors(r, c);
+      var f = 0; ns.forEach(function (p) { if (board[p[0]][p[1]].flag) f++; });
+      if (f === cell.n) {
+        var hit = null;
+        ns.forEach(function (p) {
+          var cc2 = board[p[0]][p[1]];
+          if (!cc2.open && !cc2.flag) { openCell(p[0], p[1]); if (cc2.mine) hit = p; }
+        });
+        if (hit) { endGame(false, hit[0], hit[1]); render(); return; }
+        if (checkWin()) { endGame(true); render(); return; }
+      }
+    }
+    render(); return;
+  }
+  if (!started) {
+    started = true;
+    placeMines(r, c);
+    startTimer();
+  }
+  openCell(r, c);
+  beep(660, 0.06, 'triangle');
+  if (cell.mine) { endGame(false, r, c); render(); return; }
+  if (checkWin()) { endGame(true); render(); return; }
+  render();
+}
+
+function render() {
+  var d = DIFFS[diff];
+  boardEl.innerHTML = '';
+  for (var r = 0; r < d.rows; r++) for (var c = 0; c < d.cols; c++) {
+    (function (r, c) {
+      var cell = board[r][c];
+      var el = document.createElement('button');
+      el.className = 'cell';
+      el.setAttribute('aria-label', '第' + (r + 1) + '行第' + (c + 1) + '列');
+      if (cell.open) {
+        el.classList.add('open');
+        if (cell.mine) { el.textContent = '💣'; if (over && !won) el.classList.add('boom'); }
+        else if (cell.n > 0) { el.textContent = cell.n; el.classList.add('n' + cell.n); }
+      } else if (cell.flag) {
+        el.textContent = '🚩';
+        if (over && !won && !cell.mine) el.classList.add('wrongflag');
+      }
+      el.addEventListener('click', function () {
+        if (suppressClick) { suppressClick = false; return; }
+        actCell(r, c);
+      });
+      el.addEventListener('contextmenu', function (e) {
+        e.preventDefault();
+        if (over || cell.open) return;
+        cell.flag = !cell.flag;
+        flags += cell.flag ? 1 : -1;
+        beep(440, 0.08, 'triangle');
+        updateStats(); render();
+      });
+      el.addEventListener('touchstart', function () {
+        clearTimeout(longTimer);
+        longTimer = setTimeout(function () {
+          if (over || cell.open) return;
+          suppressClick = true;
+          cell.flag = !cell.flag;
+          flags += cell.flag ? 1 : -1;
+          beep(440, 0.08, 'triangle');
+          updateStats(); render();
+        }, 450);
+      }, {passive: true});
+      el.addEventListener('touchend', function () { clearTimeout(longTimer); }, {passive: true});
+      el.addEventListener('touchmove', function () { clearTimeout(longTimer); }, {passive: true});
+      boardEl.appendChild(el);
+    })(r, c);
+  }
+}
+
+function syncModeBtn() {
+  modeBtn.textContent = flagMode ? '🚩 插旗模式' : '⛏️ 挖开模式';
+  modeBtn.className = flagMode ? 'flag' : '';
+  modeBtn.style.background = '';
+}
+modeBtn.addEventListener('click', function () {
+  flagMode = !flagMode; syncModeBtn();
+  beep(flagMode ? 520 : 400, 0.08, 'triangle');
+});
+hintBtn.addEventListener('click', function () {
+  if (over || !started || hints <= 0) return;
+  var d = DIFFS[diff], safe = [];
+  for (var r = 0; r < d.rows; r++) for (var c = 0; c < d.cols; c++) {
+    var cell = board[r][c];
+    if (!cell.open && !cell.flag && !cell.mine) safe.push([r, c]);
+  }
+  if (!safe.length) return;
+  hints--; hintLeftEl.textContent = hints;
+  if (hints === 0) hintBtn.disabled = true;
+  var p = safe[Math.floor(Math.random() * safe.length)];
+  openCell(p[0], p[1]);
+  beep(880, 0.12, 'triangle');
+  if (checkWin()) { endGame(true); render(); return; }
+  render();
+  var idx = p[0] * d.cols + p[1];
+  var el = boardEl.children[idx];
+  if (el) {
+    el.classList.add('hintflash');
+    setTimeout(function () { el.classList.remove('hintflash'); }, 900);
+  }
+});
+document.getElementById('restartBtn').addEventListener('click', function () { beep(500, 0.08); newGame(); });
+document.getElementById('soundBtn').addEventListener('click', function (e) {
+  soundOn = !soundOn;
+  e.currentTarget.textContent = soundOn ? '🔊' : '🔇';
+});
+document.getElementById('diffs').addEventListener('click', function (e) {
+  var btn = e.target.closest('button'); if (!btn) return;
+  document.querySelectorAll('#diffs button').forEach(function (b) { b.classList.remove('on'); });
+  btn.classList.add('on');
+  diff = btn.getAttribute('data-d');
+  newGame();
+});
+newGame();
+</script>
+</body>
+</html>
