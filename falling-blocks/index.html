@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>落块消消乐 · 游戏小站</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(160deg,#1a1033,#2d1b4e 55%,#0f2027);min-height:100vh;color:#fff;padding:14px 10px 30px}
+a.back{display:inline-block;color:#a5d8ff;text-decoration:none;font-size:15px;font-weight:700;padding:6px 2px}
+h1{text-align:center;font-size:26px;letter-spacing:2px;margin:4px 0 2px}
+.sub{text-align:center;color:#cbbde8;font-size:13px;margin-bottom:12px;line-height:1.6}
+.stats{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
+.stat{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:7px 12px;text-align:center;min-width:74px}
+.stat b{display:block;font-size:19px;line-height:1.2}
+.stat span{font-size:11px;color:#cbbde8}
+.layout{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap}
+.board-wrap{position:relative;background:#12081f;border:2px solid rgba(255,255,255,.25);border-radius:14px;padding:8px;box-shadow:0 14px 34px rgba(0,0,0,.45)}
+canvas#board{display:block;width:min(72vw,300px);height:auto;background:#1b1030;border-radius:8px;touch-action:none}
+.side{width:150px;display:flex;flex-direction:column;gap:10px}
+.panel{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:10px;text-align:center}
+.panel h3{font-size:13px;color:#cbbde8;margin-bottom:6px}
+.panel canvas{display:block;margin:0 auto;background:rgba(0,0,0,.25);border-radius:8px}
+.tip{font-size:12px;color:#cbbde8;line-height:1.7;text-align:left}
+.overlay{position:absolute;inset:8px;border-radius:8px;background:rgba(10,5,22,.82);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:16px;z-index:2}
+.overlay.hidden{display:none}
+.overlay h2{font-size:24px}
+.overlay p{font-size:14px;color:#d5c9ee;line-height:1.7}
+button{font-family:inherit;cursor:pointer;border:0;border-radius:12px}
+.btn{padding:12px 22px;font-size:16px;font-weight:800;color:#fff;background:linear-gradient(135deg,#e84393,#6c5ce7);box-shadow:0 6px 16px rgba(0,0,0,.35)}
+.btn:active{transform:scale(.97)}
+.btn.small{padding:9px 10px;font-size:13px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25)}
+.controls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;max-width:420px;margin:14px auto 0}
+.ctl{width:62px;height:62px;font-size:26px;font-weight:800;color:#fff;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);border-radius:16px;box-shadow:0 5px 14px rgba(0,0,0,.3);touch-action:none;user-select:none}
+.ctl.wide{width:130px;font-size:17px}
+.ctl:active{background:rgba(255,255,255,.32);transform:scale(.96)}
+.ctl.primary{background:linear-gradient(135deg,#e84393,#6c5ce7)}
+.row{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+#msg{text-align:center;min-height:20px;font-size:14px;color:#ffeaa7;margin-top:10px;font-weight:700}
+@media(max-width:520px){.side{width:100%;max-width:316px;flex-direction:row}.side .panel{flex:1}.side .tip{display:none}}
+</style>
+</head>
+<body>
+<a class="back" href="../">← 回主页</a>
+<h1>🧩 落块消消乐</h1>
+<p class="sub">七种方块从天而降，排满一行就消除！<br>攒连消冲高分，速度会越来越快。</p>
+
+<div class="stats">
+  <div class="stat"><b id="score">0</b><span>分数</span></div>
+  <div class="stat"><b id="lines">0</b><span>消除行数</span></div>
+  <div class="stat"><b id="level">1</b><span>等级</span></div>
+  <div class="stat"><b id="best">0</b><span>最高分</span></div>
+</div>
+
+<div class="layout">
+  <div class="board-wrap">
+    <canvas id="board" width="300" height="600"></canvas>
+    <div class="overlay" id="overlay">
+      <h2 id="ovTitle">准备好了吗？</h2>
+      <p id="ovText">键盘：← → 移动 · ↑ 旋转 · ↓ 软降<br>空格硬降 · C 暂存 · P 暂停<br>手机：点大按钮，或在棋盘上滑动 / 轻点旋转</p>
+      <button class="btn" id="startBtn">开始游戏</button>
+    </div>
+  </div>
+  <div class="side">
+    <div class="panel"><h3>下一个</h3><canvas id="next" width="120" height="80"></canvas></div>
+    <div class="panel"><h3>暂存（C）</h3><canvas id="hold" width="120" height="80"></canvas></div>
+    <div class="panel tip">💡 幽灵影子就是落点，先瞄准再放。<br>💡 一次消 4 行（Tetris）得 800 分×等级，最划算。<br>💡 大方块别堆在中间，留一列出气口。</div>
+  </div>
+</div>
+
+<div id="msg"></div>
+
+<div class="controls">
+  <button class="ctl" data-act="left" aria-label="左移">◀</button>
+  <button class="ctl" data-act="rotate" aria-label="旋转">↻</button>
+  <button class="ctl" data-act="right" aria-label="右移">▶</button>
+  <button class="ctl" data-act="down" aria-label="软降">▼</button>
+  <button class="ctl primary" data-act="drop" aria-label="硬降">⤓ 落下</button>
+</div>
+<div class="row">
+  <button class="btn small" id="holdBtn">暂存方块</button>
+  <button class="btn small" id="pauseBtn">暂停</button>
+  <button class="btn small" id="restartBtn">重新开始</button>
+  <button class="btn small" id="soundBtn">🔊 音效开</button>
+</div>
+
+<script>
+'use strict';
+var COLS=10, ROWS=20, CELL=30;
+var board=document.getElementById('board'), ctx=board.getContext('2d');
+var nextCv=document.getElementById('next'), nctx=nextCv.getContext('2d');
+var holdCv=document.getElementById('hold'), hctx=holdCv.getContext('2d');
+var SHAPES={
+  I:[[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+  O:[[1,1],[1,1]],
+  T:[[0,1,0],[1,1,1],[0,0,0]],
+  S:[[0,1,1],[1,1,0],[0,0,0]],
+  Z:[[1,1,0],[0,1,1],[0,0,0]],
+  J:[[1,0,0],[1,1,1],[0,0,0]],
+  L:[[0,0,1],[1,1,1],[0,0,0]]
+};
+var COLORS={I:'#00cec9',O:'#fdcb6e',T:'#a29bfe',S:'#00b894',Z:'#ff7675',J:'#74b9ff',L:'#e17055'};
+var grid, cur, queue, holdPiece, canHold, score, lines, level, best, timer, running, paused, over, soundOn=true;
+try{best=parseInt(localStorage.getItem('falling-blocks-best')||'0',10)||0;}catch(e){best=0;}
+document.getElementById('best').textContent=best;
+
+function emptyGrid(){var g=[];for(var y=0;y<ROWS;y++){g.push(new Array(COLS).fill(0));}return g;}
+function newBag(){var keys=Object.keys(SHAPES);for(var i=keys.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=keys[i];keys[i]=keys[j];keys[j]=t;}return keys;}
+function refill(){if(queue.length<7){queue=queue.concat(newBag());}}
+function spawn(){
+  refill();
+  var type=queue.shift();
+  cur={type:type,shape:SHAPES[type].map(function(r){return r.slice();}),x:3,y:type==='I'?-1:0};
+  if(type==='O'){cur.x=4;}
+  canHold=true;
+  if(collides(cur.shape,cur.x,cur.y)){gameOver();}
+}
+function collides(shape,x,y){
+  for(var r=0;r<shape.length;r++)for(var c=0;c<shape[r].length;c++){
+    if(!shape[r][c])continue;
+    var nx=x+c, ny=y+r;
+    if(nx<0||nx>=COLS||ny>=ROWS)return true;
+    if(ny>=0&&grid[ny][nx])return true;
+  }
+  return false;
+}
+function rotate(shape){
+  var n=shape.length, out=[];
+  for(var r=0;r<n;r++){out.push([]);for(var c=0;c<n;c++){out[r][c]=shape[n-1-c][r];}}
+  return out;
+}
+function tryRotate(){
+  if(!running||paused||over)return;
+  var rot=rotate(cur.shape);
+  var kicks=[0,-1,1,-2,2];
+  for(var i=0;i<kicks.length;i++){
+    if(!collides(rot,cur.x+kicks[i],cur.y)){cur.shape=rot;cur.x+=kicks[i];beep(520,0.05);draw();return;}
+  }
+}
+function move(dx){
+  if(!running||paused||over)return false;
+  if(!collides(cur.shape,cur.x+dx,cur.y)){cur.x+=dx;draw();return true;}
+  return false;
+}
+function softDrop(){
+  if(!running||paused||over)return;
+  if(!collides(cur.shape,cur.x,cur.y+1)){cur.y++;score+=1;updateStats();}
+  else{lock();}
+  draw();
+}
+function hardDrop(){
+  if(!running||paused||over)return;
+  var d=0;
+  while(!collides(cur.shape,cur.x,cur.y+1)){cur.y++;d++;}
+  score+=d*2;lock();draw();
+}
+function ghostY(){
+  var y=cur.y;
+  while(!collides(cur.shape,cur.x,y+1)){y++;}
+  return y;
+}
+function lock(){
+  cur.shape.forEach(function(row,r){
+    row.forEach(function(v,c){
+      if(v&&cur.y+r>=0){grid[cur.y+r][cur.x+c]=cur.type;}
+    });
+  });
+  beep(220,0.06);
+  clearLines();
+  spawn();
+  draw();
+}
+function clearLines(){
+  var cleared=0;
+  for(var y=ROWS-1;y>=0;y--){
+    if(grid[y].every(function(v){return v;})){
+      grid.splice(y,1);grid.unshift(new Array(COLS).fill(0));cleared++;y++;
+    }
+  }
+  if(cleared){
+    var pts=[0,100,300,500,800][cleared]*level;
+    score+=pts;lines+=cleared;
+    var nl=Math.floor(lines/10)+1;
+    if(nl!==level){level=nl;restartTimer();showMsg('速度提升！现在是 '+level+' 级');}
+    showMsg(cleared===4?'漂亮！一次消 4 行 +'+pts+' 分':'消除 '+cleared+' 行 +'+pts+' 分');
+    beep(880,0.12);
+  }
+  updateStats();
+}
+function updateStats(){
+  document.getElementById('score').textContent=score;
+  document.getElementById('lines').textContent=lines;
+  document.getElementById('level').textContent=level;
+  if(score>best){best=score;document.getElementById('best').textContent=best;try{localStorage.setItem('falling-blocks-best',String(best));}catch(e){}}
+}
+function showMsg(t){var m=document.getElementById('msg');m.textContent=t;clearTimeout(showMsg._t);showMsg._t=setTimeout(function(){m.textContent='';},2200);}
+function paintBlock(c,px,py,size,color,alpha){
+  c.save();if(alpha!==undefined)c.globalAlpha=alpha;
+  c.fillStyle=color;
+  roundRect(c,px+1,py+1,size-2,size-2,6);c.fill();
+  c.fillStyle='rgba(255,255,255,.35)';
+  roundRect(c,px+4,py+4,size-10,8,4);c.fill();
+  c.restore();
+}
+function roundRect(c,x,y,w,h,r){
+  c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();
+}
+function draw(){
+  ctx.clearRect(0,0,300,600);
+  ctx.fillStyle='#1b1030';ctx.fillRect(0,0,300,600);
+  ctx.strokeStyle='rgba(255,255,255,.07)';ctx.lineWidth=1;
+  for(var x=0;x<=COLS;x++){ctx.beginPath();ctx.moveTo(x*CELL,0);ctx.lineTo(x*CELL,600);ctx.stroke();}
+  for(var y=0;y<=ROWS;y++){ctx.beginPath();ctx.moveTo(0,y*CELL);ctx.lineTo(300,y*CELL);ctx.stroke();}
+  for(var gy=0;gy<ROWS;gy++)for(var gx=0;gx<COLS;gx++){
+    if(grid[gy][gx])paintBlock(ctx,gx*CELL,gy*CELL,CELL,COLORS[grid[gy][gx]]);
+  }
+  if(cur&&!over){
+    var gy2=ghostY();
+    cur.shape.forEach(function(row,r){row.forEach(function(v,c){
+      if(v&&gy2+r>=0){ctx.save();ctx.globalAlpha=.28;ctx.strokeStyle=COLORS[cur.type];ctx.lineWidth=2;roundRect(ctx,cur.x*CELL+c*CELL+2,gy2*CELL+r*CELL+2,CELL-4,CELL-4,6);ctx.stroke();ctx.restore();}
+    });});
+    cur.shape.forEach(function(row,r){row.forEach(function(v,c){
+      if(v&&cur.y+r>=0)paintBlock(ctx,(cur.x+c)*CELL,(cur.y+r)*CELL,CELL,COLORS[cur.type]);
+    });});
+  }
+  drawMini(nctx,queue[0]);
+  drawMini(hctx,holdPiece);
+}
+function drawMini(c,type){
+  c.clearRect(0,0,120,80);
+  if(!type)return;
+  var shape=SHAPES[type], s=18;
+  var w=shape[0].length*s, h=shape.length*s;
+  var ox=(120-w)/2, oy=(80-h)/2;
+  shape.forEach(function(row,r){row.forEach(function(v,cc){
+    if(v)paintBlock(c,ox+cc*s,oy+r*s,s,COLORS[type]);
+  });});
+}
+function step(){
+  if(!running||paused||over)return;
+  if(!collides(cur.shape,cur.x,cur.y+1)){cur.y++;}
+  else{lock();}
+  draw();
+}
+function interval(){return Math.max(1000-(level-1)*80,100);}
+function restartTimer(){clearInterval(timer);timer=setInterval(step,interval());}
+function startGame(){
+  grid=emptyGrid();queue=[];holdPiece=null;canHold=true;
+  score=0;lines=0;level=1;running=true;paused=false;over=false;
+  document.getElementById('overlay').classList.add('hidden');
+  document.getElementById('pauseBtn').textContent='暂停';
+  spawn();updateStats();restartTimer();draw();showMsg('开始！排满一行即可消除');
+}
+function gameOver(){
+  over=true;running=false;clearInterval(timer);
+  document.getElementById('ovTitle').textContent='游戏结束';
+  document.getElementById('ovText').textContent='得分 '+score+' 分 · 消除 '+lines+' 行 · 到达 '+level+' 级\n最高分 '+best+' 分';
+  document.getElementById('overlay').classList.remove('hidden');
+  document.getElementById('startBtn').textContent='再来一局';
+  beep(160,0.3);
+}
+function togglePause(){
+  if(!running||over)return;
+  paused=!paused;
+  document.getElementById('pauseBtn').textContent=paused?'继续':'暂停';
+  document.getElementById('overlay').classList.toggle('hidden',!paused);
+  if(paused){document.getElementById('ovTitle').textContent='已暂停';document.getElementById('ovText').textContent='点“继续”回到游戏';document.getElementById('startBtn').textContent='继续';}
+}
+function doHold(){
+  if(!running||paused||over||!canHold)return;
+  if(!holdPiece){holdPiece=cur.type;spawn();canHold=false;}
+  else{var t=holdPiece;holdPiece=cur.type;cur={type:t,shape:SHAPES[t].map(function(r){return r.slice();}),x:3,y:t==='I'?-1:0};if(t==='O')cur.x=4;canHold=false;if(collides(cur.shape,cur.x,cur.y))gameOver();}
+  draw();
+}
+var audioCtx=null;
+function beep(freq,dur){
+  if(!soundOn)return;
+  try{
+    if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    var o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.type='sine';o.frequency.value=freq;g.gain.value=.08;
+    o.connect(g);g.connect(audioCtx.destination);
+    o.start();g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+dur);o.stop(audioCtx.currentTime+dur);
+  }catch(e){}
+}
+function act(name){
+  if(name==='left')move(-1);
+  else if(name==='right')move(1);
+  else if(name==='rotate')tryRotate();
+  else if(name==='down')softDrop();
+  else if(name==='drop')hardDrop();
+}
+document.querySelectorAll('.ctl').forEach(function(btn){
+  var rep=null;
+  function startRep(e){
+    e.preventDefault();act(btn.dataset.act);
+    if(btn.dataset.act==='left'||btn.dataset.act==='right'||btn.dataset.act==='down'){
+      clearInterval(rep);rep=setInterval(function(){act(btn.dataset.act);},130);
+    }
+  }
+  function stopRep(){clearInterval(rep);}
+  btn.addEventListener('pointerdown',startRep);
+  btn.addEventListener('pointerup',stopRep);
+  btn.addEventListener('pointerleave',stopRep);
+  btn.addEventListener('pointercancel',stopRep);
+});
+document.getElementById('startBtn').addEventListener('click',function(){
+  if(paused){togglePause();return;}
+  startGame();
+});
+document.getElementById('restartBtn').addEventListener('click',startGame);
+document.getElementById('pauseBtn').addEventListener('click',togglePause);
+document.getElementById('holdBtn').addEventListener('click',doHold);
+document.getElementById('soundBtn').addEventListener('click',function(){
+  soundOn=!soundOn;this.textContent=soundOn?'🔊 音效开':'🔇 音效关';
+});
+document.addEventListener('keydown',function(e){
+  var k=e.key;
+  if(['ArrowLeft','ArrowRight','ArrowDown','ArrowUp',' '].indexOf(k)>=0)e.preventDefault();
+  if(k==='ArrowLeft')move(-1);
+  else if(k==='ArrowRight')move(1);
+  else if(k==='ArrowDown')softDrop();
+  else if(k==='ArrowUp')tryRotate();
+  else if(k===' ')hardDrop();
+  else if(k==='c'||k==='C')doHold();
+  else if(k==='p'||k==='P')togglePause();
+});
+var tx=0,ty=0;
+board.addEventListener('touchstart',function(e){var t=e.touches[0];tx=t.clientX;ty=t.clientY;},{passive:true});
+board.addEventListener('touchend',function(e){
+  var t=e.changedTouches[0],dx=t.clientX-tx,dy=t.clientY-ty;
+  if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>24){for(var i=0;i<Math.round(Math.abs(dx)/24);i++)move(dx>0?1:-1);}
+  else if(dy>50){hardDrop();}
+  else if(Math.abs(dx)<12&&Math.abs(dy)<12){tryRotate();}
+});
+grid=emptyGrid();queue=[];cur=null;
+draw();
+</script>
+</body>
+</html>
