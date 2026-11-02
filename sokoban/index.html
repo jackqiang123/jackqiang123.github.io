@@ -104,7 +104,7 @@ var LEVELS=[
 ["##########","#        #","# @$ $   #","#  # # $ #","#  ..#.  #","#   #    #","#        #","##########"],
 ["##########","#        #","# @$$    #","#  #..   #","#  $ $   #","#  #..   #","#        #","##########"]
 ];
-var state=null,history=[],levelIndex=0,unlocked=1,soundOn=true,walking=false;
+var state=null,undoStack=[],levelIndex=0,unlocked=1,soundOn=true,walking=false;
 var bestKey="sokoban-best-",unlockKey="sokoban-unlocked";
 try{unlocked=parseInt(localStorage.getItem(unlockKey)||"1",10)||1;}catch(e){}
 function parseLevel(lines){
@@ -127,7 +127,7 @@ function restore(s){state.player=s.player.slice();state.boxes=s.boxes.slice();st
 function loadLevel(i){
   levelIndex=i;var lv=parseLevel(LEVELS[i]);
   state={grid:lv.grid,boxes:lv.boxes,goals:lv.goals,player:lv.player,w:lv.w,h:lv.h,steps:0,pushes:0};
-  history=[];walking=false;hideOverlay();render();renderLevelbar();
+  undoStack=[];walking=false;hideOverlay();render();renderLevelbar();
   document.getElementById("lvLabel").textContent="第 "+(i+1)+" 关";
   var b=null;try{b=localStorage.getItem(bestKey+i);}catch(e){}
   document.getElementById("bestLabel").textContent=b?b+" 步":"—";
@@ -172,10 +172,10 @@ function tryMove(dx,dy){
   if(bi>=0){
     var bx=nx+dx,by=ny+dy;
     if(isWall(bx,by)||boxAt(bx,by)>=0){document.getElementById("msg").textContent="推不动！前面是墙或另一个箱子";return false;}
-    history.push(snapshot());
+    undoStack.push(snapshot());
     state.boxes[bi]=bx+","+by;state.player=[nx,ny];state.steps++;state.pushes++;beep(220);
   }else{
-    history.push(snapshot());
+    undoStack.push(snapshot());
     state.player=[nx,ny];state.steps++;beep(520);
   }
   render();checkWin();return true;
@@ -223,7 +223,7 @@ function tapCell(x,y){
   if(isWall(x,y))return;
   var path=findPath(x,y);
   if(!path){document.getElementById("msg").textContent="走不过去：被箱子或墙挡住了";return;}
-  walking=true;history.push(snapshot());
+  walking=true;undoStack.push(snapshot());
   var i=0;
   (function step(){
     if(i>=path.length){walking=false;render();return;}
@@ -255,7 +255,7 @@ document.addEventListener("keydown",function(e){
   if(e.key==="z"||e.key==="Z")undo();
 });
 document.getElementById("undoBtn").onclick=undo;
-function undo(){if(walking)return;if(!history.length){document.getElementById("msg").textContent="已经是开局，没法再悔了";return;}restore(history.pop());render();}
+function undo(){if(walking)return;if(!undoStack.length){document.getElementById("msg").textContent="已经是开局，没法再悔了";return;}restore(undoStack.pop());render();}
 document.getElementById("restartBtn").onclick=function(){loadLevel(levelIndex);};
 document.getElementById("hintBtn").onclick=hint;
 document.getElementById("nextBtn").onclick=function(){loadLevel(levelIndex===LEVELS.length-1?0:levelIndex+1);};
