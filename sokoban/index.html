@@ -30,9 +30,11 @@ h1{text-align:center;font-size:26px;margin:10px 0 2px;text-shadow:0 3px 12px rgb
 .cell.wall::after{content:"🧱";font-size:.72em;opacity:.85}
 .cell.goal{background:#c89b62;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
 .cell.goal::before{content:"";position:absolute;width:64%;height:64%;border-radius:50%;border:4px solid #e74c3c;background:radial-gradient(circle,#fff 0 22%,#ff7675 23% 45%,#fff 46% 60%,#e74c3c 61%);opacity:.95}
-.cell .box{width:86%;height:86%;border-radius:8px;background:linear-gradient(180deg,#e8a94e,#c87f2a);border:2px solid #7a4a12;box-shadow:0 3px 0 #7a4a12,0 5px 8px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;font-size:.78em;position:relative;z-index:2}
-.cell .box::after{content:"";position:absolute;inset:18%;border:2px solid rgba(122,74,18,.65);border-radius:4px}
+.cell .box{width:86%;height:86%;border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(0,0,0,.18)),repeating-linear-gradient(0deg,#e8a94e 0 30%,#b87a24 30% 34%,#e8a94e 34% 64%,#b87a24 64% 68%,#e8a94e 68% 100%);border:3px solid #4a2c0a;box-shadow:0 3px 0 #4a2c0a,0 6px 10px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;position:relative;z-index:2}
+.cell .box::before{content:"";position:absolute;inset:0;background:linear-gradient(45deg,transparent 46%,rgba(74,44,10,.85) 46% 54%,transparent 54%),linear-gradient(-45deg,transparent 46%,rgba(74,44,10,.85) 46% 54%,transparent 54%)}
+.cell .box::after{content:"";position:absolute;inset:13%;border:2px solid rgba(74,44,10,.75);border-radius:3px}
 .cell .box.ong{border-color:#1e7a34;box-shadow:0 3px 0 #1e7a34,0 0 0 3px #2ecc71,0 5px 8px rgba(0,0,0,.35)}
+.cell .box.ong::after{content:"✓";display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.1em;font-weight:900;background:rgba(30,122,52,.45);border-color:#a9f5c9}
 .cell .player{width:88%;height:88%;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9c4,#f5b971 60%,#e89b4e);border:2px solid #7a4a12;box-shadow:0 3px 6px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:.82em;position:relative;z-index:3}
 .cell .player::before{content:"";position:absolute;top:-4px;left:12%;right:12%;height:34%;background:#e74c3c;border-radius:10px 10px 4px 4px;border:2px solid #7a1f1f}
 .msg{text-align:center;min-height:22px;margin:10px 0 2px;font-size:14px;color:#ffe9b8}
@@ -153,7 +155,7 @@ function render(){
     cell.className="cell "+(isWall(x,y)?"wall":(isGoal?"goal":"floor"));
     cell.dataset.x=x;cell.dataset.y=y;
     var bi=boxAt(x,y);
-    if(bi>=0){var box=document.createElement("div");box.className="box"+(isGoal?" ong":"");box.textContent=isGoal?"✅":"📦";cell.appendChild(box);}
+    if(bi>=0){var box=document.createElement("div");box.className="box"+(isGoal?" ong":"");cell.appendChild(box);}
     if(state.player[0]===x&&state.player[1]===y){var p=document.createElement("div");p.className="player";p.textContent="😊";cell.appendChild(p);}
     cell.addEventListener("click",function(){var cx=parseInt(this.dataset.x,10),cy=parseInt(this.dataset.y,10);tapCell(cx,cy);});
     board.appendChild(cell);
