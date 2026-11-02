@@ -20,6 +20,7 @@
 | 2026-10-30 | 💣 扫雷大冒险 | [/minesweeper/](https://jackqiang123.github.io/minesweeper/) | 经典扫雷：初级 9×9/10 雷、中级 12×12/24 雷、高级 14×14/40 雷，首次点击安全（周围一圈无雷）、空白连片自动展开、数字和弦快挖、挖/插旗模式切换、右键与长按插旗、每局 3 次安全提示、计时 + 各难度最快纪录 + 星级结算、WebAudio 音效可关 |
 | 2026-10-31 | 🧩 落块消消乐 | [/falling-blocks/](https://jackqiang123.github.io/falling-blocks/) | 原创落块益智：10×20 棋盘、7 种方块、7-bag 随机发牌，消行计分（1/2/3/4 行 = 100/300/500/800×等级）、每 10 行升一级加速；幽灵落点预览、下一个预览、暂存方块、软降/硬降、暂停/重开、最高分纪录；键盘/大按钮/棋盘滑动与轻点旋转，WebAudio 音效可关 |
 | 2026-11-01 | 🐤 云端飞行 | [/sky-flapper/](https://jackqiang123.github.io/sky-flapper/) | 原创 Flappy 类：点击/空格/↑ 扇翅膀穿云柱得分，手绘卡通小黄鸟、渐变天空与远山云朵；速度随分数递增、柱缝递减有下限，铜银金钻石奖牌 + 最高分纪录，WebAudio 音效可关 |
+| 2026-11-02 | 📦 推箱子大冒险 | [/sokoban/](https://jackqiang123.github.io/sokoban/) | 经典推箱子：10 关从易到难，把木箱推到红色靶心过关；点空地自动寻路、悔一步、提示、每关星级与最少步纪录；键盘/WASD、滑动棋盘、大方向键，WebAudio 音效可关 |
 
 ## 更新节奏
 - 每天凌晨 3:00（太平洋时间）自动新增一个小游戏并更新本目录与主页卡片。
@@ -38,3 +39,4 @@
 - `minesweeper/index.html` —— 扫雷大冒险
 - `falling-blocks/index.html` —— 落块消消乐
 - `sky-flapper/index.html` —— 云端飞行
+- `sokoban/index.html` —— 推箱子大冒险

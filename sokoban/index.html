@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>推箱子大冒险 · 游戏小站</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(165deg,#2d1e12,#5b3a1e 55%,#8a5a2b);min-height:100vh;color:#fff}
+.wrap{max-width:480px;margin:0 auto;padding:14px 14px 30px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.top a{color:#ffe9b8;text-decoration:none;font-size:15px;font-weight:700}
+.top button{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:999px;padding:7px 14px;font-size:13px}
+h1{text-align:center;font-size:26px;margin:10px 0 2px;text-shadow:0 3px 12px rgba(0,0,0,.4)}
+.sub{text-align:center;color:#f3d9a8;font-size:13px;margin-bottom:12px;line-height:1.6}
+.stats{display:flex;gap:8px;margin-bottom:10px}
+.stat{flex:1;background:rgba(0,0,0,.28);border-radius:12px;padding:8px 4px;text-align:center}
+.stat b{display:block;font-size:19px}
+.stat span{font-size:11px;color:#f3d9a8}
+.levelbar{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:12px}
+.levelbar button{width:38px;height:38px;border-radius:10px;border:2px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;font-size:14px;font-weight:800}
+.levelbar button.on{background:#ffb703;border-color:#fff;color:#3a2200}
+.levelbar button.done{background:#2ecc71;border-color:#a9f5c9}
+.levelbar button:disabled{opacity:.35}
+.board-wrap{background:#1d1208;border-radius:18px;padding:12px;box-shadow:0 14px 30px rgba(0,0,0,.45);touch-action:none}
+#board{display:grid;gap:2px;justify-content:center}
+.cell{aspect-ratio:1;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:clamp(20px,7.5vw,34px);position:relative;user-select:none}
+.cell.floor{background:#c89b62;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.cell.wall{background:linear-gradient(180deg,#7a4a26,#5d3517);box-shadow:inset 0 2px 0 rgba(255,255,255,.25),inset 0 -3px 0 rgba(0,0,0,.35);border:1px solid #3d2210}
+.cell.wall::after{content:"🧱";font-size:.72em;opacity:.85}
+.cell.goal{background:#c89b62;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.cell.goal::before{content:"";position:absolute;width:64%;height:64%;border-radius:50%;border:4px solid #e74c3c;background:radial-gradient(circle,#fff 0 22%,#ff7675 23% 45%,#fff 46% 60%,#e74c3c 61%);opacity:.95}
+.cell .box{width:86%;height:86%;border-radius:8px;background:linear-gradient(180deg,#e8a94e,#c87f2a);border:2px solid #7a4a12;box-shadow:0 3px 0 #7a4a12,0 5px 8px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;font-size:.78em;position:relative;z-index:2}
+.cell .box::after{content:"";position:absolute;inset:18%;border:2px solid rgba(122,74,18,.65);border-radius:4px}
+.cell .box.ong{border-color:#1e7a34;box-shadow:0 3px 0 #1e7a34,0 0 0 3px #2ecc71,0 5px 8px rgba(0,0,0,.35)}
+.cell .player{width:88%;height:88%;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9c4,#f5b971 60%,#e89b4e);border:2px solid #7a4a12;box-shadow:0 3px 6px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:.82em;position:relative;z-index:3}
+.cell .player::before{content:"";position:absolute;top:-4px;left:12%;right:12%;height:34%;background:#e74c3c;border-radius:10px 10px 4px 4px;border:2px solid #7a1f1f}
+.msg{text-align:center;min-height:22px;margin:10px 0 2px;font-size:14px;color:#ffe9b8}
+.btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:8px 0}
+.btns button{background:#ffb703;color:#3a2200;border:none;border-radius:12px;padding:11px 16px;font-size:15px;font-weight:800;box-shadow:0 4px 0 #b57e00}
+.btns button:active{transform:translateY(3px);box-shadow:0 1px 0 #b57e00}
+.btns button.ghost{background:rgba(255,255,255,.16);color:#fff;box-shadow:0 4px 0 rgba(0,0,0,.3)}
+.pad{display:grid;grid-template-columns:repeat(3,64px);gap:8px;justify-content:center;margin:14px auto 4px}
+.pad button{width:64px;height:64px;border-radius:18px;border:none;background:rgba(255,255,255,.92);font-size:28px;box-shadow:0 5px 0 rgba(0,0,0,.35)}
+.pad button:active{transform:translateY(4px);box-shadow:0 1px 0 rgba(0,0,0,.35)}
+.pad .blank{background:transparent;box-shadow:none}
+.help{background:rgba(0,0,0,.28);border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.9;color:#fbeed3;margin-top:14px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;padding:20px;z-index:10}
+.overlay.show{display:flex}
+.card2{background:#fff;color:#2d3436;border-radius:20px;padding:26px 22px;text-align:center;max-width:340px;width:100%}
+.card2 h2{font-size:24px;margin-bottom:8px}
+.card2 p{font-size:14px;line-height:1.9;color:#636e72}
+.card2 .stars{font-size:34px;letter-spacing:6px;margin:8px 0}
+.card2 button{background:#ffb703;border:none;border-radius:12px;padding:12px 20px;font-size:16px;font-weight:800;margin-top:14px;width:100%}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a href="../">← 回主页</a><button id="soundBtn" type="button">🔊 音效：开</button></div>
+  <h1>📦 推箱子大冒险</h1>
+  <p class="sub">把所有木箱推到红色靶心上就过关！<br>点空地可自动寻路走过去，省得一步步按</p>
+  <div class="stats">
+    <div class="stat"><b id="lvLabel">第 1 关</b><span>关卡</span></div>
+    <div class="stat"><b id="stepLabel">0</b><span>步数</span></div>
+    <div class="stat"><b id="pushLabel">0</b><span>推箱次数</span></div>
+    <div class="stat"><b id="bestLabel">—</b><span>本关最少步</span></div>
+  </div>
+  <div class="levelbar" id="levelbar"></div>
+  <div class="board-wrap"><div id="board"></div></div>
+  <div class="msg" id="msg">用方向键 / 滑动 / 大按钮移动，箱子只能推不能拉</div>
+  <div class="btns">
+    <button id="undoBtn" type="button">↩ 悔一步</button>
+    <button id="restartBtn" type="button" class="ghost">🔄 重开本关</button>
+    <button id="hintBtn" type="button" class="ghost">💡 提示</button>
+  </div>
+  <div class="pad">
+    <span class="blank"></span><button data-dir="0,-1" type="button" aria-label="上">⬆️</button><span class="blank"></span>
+    <button data-dir="-1,0" type="button" aria-label="左">⬅️</button><button data-dir="0,1" type="button" aria-label="下">⬇️</button><button data-dir="1,0" type="button" aria-label="右">➡️</button>
+    <span class="blank"></span><span class="blank"></span><span class="blank"></span>
+  </div>
+  <div class="help">💡 玩法：工人一次只能推一个箱子，箱子推到墙角或两面贴墙就卡死了，卡住就点“悔一步”或重开。点棋盘上的空地，工人会自动寻路走过去；点箱子旁边的空地，走过去就能顺手推。键盘：方向键 / WASD；手机：滑动棋盘或点大按钮。</div>
+</div>
+<div class="overlay" id="overlay"><div class="card2">
+  <h2>🎉 过关啦！</h2>
+  <div class="stars" id="stars">⭐⭐⭐</div>
+  <p id="winText"></p>
+  <button id="nextBtn" type="button">下一关 →</button>
+  <button id="replayBtn" type="button" style="background:#dfe6e9">再玩一次</button>
+</div></div>
+<script>
+"use strict";
+/* 关卡：# 墙 . 靶心 $ 箱子 @ 工人，空格 地板 */
+var LEVELS=[
+["#####","#   #","#@$.#","#   #","#####"],
+["#######","#     #","# @$. #","#  $. #","#     #","#######"],
+["########","#      #","# @$$  #","#  ..  #","#      #","########"],
+["#########","#       #","# @ $ . #","#  $ .  #","#   $ . #","#       #","#########"],
+["########","#  #   #","# @$.# #","#  $   #","#  . # #","#      #","########"],
+["#########","#       #","# @ $   #","#  #$#  #","#  $ .  #","#  ..   #","#       #","#########"],
+["##########","#        #","# @  $   #","#  ## $  #","#  . $ . #","#  .     #","#        #","##########"],
+["#########","# #     #","# # @ $ #","#   $$  #","#  #..  #","#  # .  #","#       #","#########"],
+["##########","#        #","# @$ $   #","#  # # $ #","#  ..#.  #","#   #    #","#        #","##########"],
+["##########","#        #","# @$$    #","#  #..   #","#  $ $   #","#  #..   #","#        #","##########"]
+];
+var state=null,history=[],levelIndex=0,unlocked=1,soundOn=true,walking=false;
+var bestKey="sokoban-best-",unlockKey="sokoban-unlocked";
+try{unlocked=parseInt(localStorage.getItem(unlockKey)||"1",10)||1;}catch(e){}
+function parseLevel(lines){
+  var grid=[],boxes=[],goals=[],player=null;
+  lines.forEach(function(row,y){
+    var r=[];
+    row.split("").forEach(function(ch,x){
+      var base=(ch==="#"?"#":" ");
+      if(ch==="."){goals.push(x+","+y);}
+      if(ch==="$"){boxes.push(x+","+y);}
+      if(ch==="@"){player=[x,y];}
+      r.push(base);
+    });
+    grid.push(r);
+  });
+  return {grid:grid,boxes:boxes,goals:goals,player:player,w:grid[0].length,h:grid.length};
+}
+function snapshot(){return {player:state.player.slice(),boxes:state.boxes.slice(),steps:state.steps,pushes:state.pushes};}
+function restore(s){state.player=s.player.slice();state.boxes=s.boxes.slice();state.steps=s.steps;state.pushes=s.pushes;}
+function loadLevel(i){
+  levelIndex=i;var lv=parseLevel(LEVELS[i]);
+  state={grid:lv.grid,boxes:lv.boxes,goals:lv.goals,player:lv.player,w:lv.w,h:lv.h,steps:0,pushes:0};
+  history=[];walking=false;hideOverlay();render();renderLevelbar();
+  document.getElementById("lvLabel").textContent="第 "+(i+1)+" 关";
+  var b=null;try{b=localStorage.getItem(bestKey+i);}catch(e){}
+  document.getElementById("bestLabel").textContent=b?b+" 步":"—";
+  document.getElementById("msg").textContent=i===0?"先向右推一箱子到红靶心试试":"第 "+(i+1)+" 关：把 "+state.boxes.length+" 个箱子都推到靶心";
+}
+function isWall(x,y){return x<0||y<0||x>=state.w||y>=state.h||state.grid[y][x]==="#";}
+function boxAt(x,y){return state.boxes.indexOf(x+","+y);}
+function renderLevelbar(){
+  var bar=document.getElementById("levelbar");bar.innerHTML="";
+  LEVELS.forEach(function(_,i){
+    var b=document.createElement("button");b.type="button";b.textContent=i+1;
+    if(i===levelIndex)b.className="on";else if(i<unlocked)b.className="done";
+    b.disabled=i>=unlocked&&i!==levelIndex;
+    b.onclick=function(){if(i<unlocked||i===levelIndex)loadLevel(i);};
+    bar.appendChild(b);
+  });
+}
+function render(){
+  var board=document.getElementById("board");
+  board.style.gridTemplateColumns="repeat("+state.w+",minmax(0,1fr))";
+  board.innerHTML="";
+  for(var y=0;y<state.h;y++)for(var x=0;x<state.w;x++){
+    var cell=document.createElement("div");
+    var isGoal=state.goals.indexOf(x+","+y)>=0;
+    cell.className="cell "+(isWall(x,y)?"wall":(isGoal?"goal":"floor"));
+    cell.dataset.x=x;cell.dataset.y=y;
+    var bi=boxAt(x,y);
+    if(bi>=0){var box=document.createElement("div");box.className="box"+(isGoal?" ong":"");box.textContent=isGoal?"✅":"📦";cell.appendChild(box);}
+    if(state.player[0]===x&&state.player[1]===y){var p=document.createElement("div");p.className="player";p.textContent="😊";cell.appendChild(p);}
+    cell.addEventListener("click",function(){var cx=parseInt(this.dataset.x,10),cy=parseInt(this.dataset.y,10);tapCell(cx,cy);});
+    board.appendChild(cell);
+  }
+  document.getElementById("stepLabel").textContent=state.steps;
+  document.getElementById("pushLabel").textContent=state.pushes;
+}
+function beep(f){if(!soundOn)return;try{var ctx=new (window.AudioContext||window.webkitAudioContext)();var o=ctx.createOscillator(),g=ctx.createGain();o.frequency.value=f;o.connect(g);g.connect(ctx.destination);g.gain.setValueAtTime(0.08,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.12);o.start();o.stop(ctx.currentTime+0.13);}catch(e){}}
+function tryMove(dx,dy){
+  if(walking)return false;
+  var px=state.player[0],py=state.player[1],nx=px+dx,ny=py+dy;
+  if(isWall(nx,ny))return false;
+  var bi=boxAt(nx,ny);
+  if(bi>=0){
+    var bx=nx+dx,by=ny+dy;
+    if(isWall(bx,by)||boxAt(bx,by)>=0){document.getElementById("msg").textContent="推不动！前面是墙或另一个箱子";return false;}
+    history.push(snapshot());
+    state.boxes[bi]=bx+","+by;state.player=[nx,ny];state.steps++;state.pushes++;beep(220);
+  }else{
+    history.push(snapshot());
+    state.player=[nx,ny];state.steps++;beep(520);
+  }
+  render();checkWin();return true;
+}
+function checkWin(){
+  var done=state.boxes.every(function(b){return state.goals.indexOf(b)>=0;});
+  if(!done)return;
+  var par=[1,6,12,16,22,30,40,50,60,75][levelIndex]||60;
+  var stars=state.steps<=par?3:(state.steps<=par*2?2:1);
+  try{
+    var old=parseInt(localStorage.getItem(bestKey+levelIndex)||"99999",10);
+    if(state.steps<old)localStorage.setItem(bestKey+levelIndex,String(state.steps));
+    if(levelIndex+1>=unlocked&&levelIndex+1<LEVELS.length){unlocked=levelIndex+1;localStorage.setItem(unlockKey,String(unlocked));}
+    if(levelIndex===LEVELS.length-1&&unlocked<LEVELS.length){unlocked=LEVELS.length;localStorage.setItem(unlockKey,String(unlocked));}
+  }catch(e){}
+  document.getElementById("stars").textContent="⭐".repeat(stars);
+  document.getElementById("winText").textContent="第 "+(levelIndex+1)+" 关完成！用 "+state.steps+" 步、推了 "+state.pushes+" 次"+(levelIndex===LEVELS.length-1?" —— 全部 10 关都通关了，厉害！":"");
+  document.getElementById("nextBtn").textContent=levelIndex===LEVELS.length-1?"再玩第 1 关":"下一关 →";
+  document.getElementById("overlay").classList.add("show");
+  beep(880);renderLevelbar();
+}
+function hideOverlay(){document.getElementById("overlay").classList.remove("show");}
+/* 点空地自动寻路（只走路、不推箱） */
+function findPath(tx,ty){
+  var start=state.player.join(","),seen={};seen[start]=null;
+  var q=[[state.player[0],state.player[1]]];
+  var blocked={};state.boxes.forEach(function(b){blocked[b]=1;});
+  while(q.length){
+    var cur=q.shift(),cx=cur[0],cy=cur[1];
+    if(cx===tx&&cy===ty)break;
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(function(d){
+      var nx=cx+d[0],ny=cy+d[1],k=nx+","+ny;
+      if(isWall(nx,ny)||blocked[k]||seen[k]!==undefined)return;
+      seen[k]=cx+","+cy;q.push([nx,ny]);
+    });
+  }
+  var key=tx+","+ty;if(seen[key]===undefined)return null;
+  var path=[];while(key!==start){var parts=key.split(",");path.unshift([parseInt(parts[0],10),parseInt(parts[1],10)]);key=seen[key];}
+  return path;
+}
+function tapCell(x,y){
+  if(walking)return;
+  if(state.player[0]===x&&state.player[1]===y)return;
+  if(boxAt(x,y)>=0){document.getElementById("msg").textContent="点箱子旁边的空地走过去再推";return;}
+  if(isWall(x,y))return;
+  var path=findPath(x,y);
+  if(!path){document.getElementById("msg").textContent="走不过去：被箱子或墙挡住了";return;}
+  walking=true;history.push(snapshot());
+  var i=0;
+  (function step(){
+    if(i>=path.length){walking=false;render();return;}
+    state.player=path[i];state.steps++;i++;render();setTimeout(step,90);
+  })();
+}
+function hint(){
+  /* 提示：找一个能把箱子推向靶心的合法推法，优先离靶心更近的 */
+  var dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+  var best=null;
+  dirs.forEach(function(d){
+    var px=state.player[0],py=state.player[1];
+    /* 先看玩家当前位置能否直接推 */
+    var bi=boxAt(px+d[0],py+d[1]);
+    if(bi>=0){
+      var bx=px+d[0]*2,by=py+d[1]*2;
+      if(!isWall(bx,by)&&boxAt(bx,by)<0){
+        var dist=state.goals.reduce(function(m,g){var p=g.split(",");return Math.min(m,Math.abs(bx-parseInt(p[0],10))+Math.abs(by-parseInt(p[1],10)));},99);
+        if(!best||dist<best.dist)best={dist:dist,msg:"试试把这个箱子向"+(d[0]===1?"右":d[0]===-1?"左":d[1]===1?"下":"上")+"推一格"};
+      }
+    }
+  });
+  document.getElementById("msg").textContent=best?("💡 "+best.msg):"💡 先走到箱子后面，再把它往靶心方向推";
+}
+document.querySelectorAll(".pad button").forEach(function(b){b.addEventListener("click",function(){var d=b.dataset.dir.split(",");tryMove(parseInt(d[0],10),parseInt(d[1],10));});});
+document.addEventListener("keydown",function(e){
+  var m={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],s:[0,1],a:[-1,0],d:[1,0],W:[0,-1],S:[0,1],A:[-1,0],D:[1,0]}[e.key];
+  if(m){e.preventDefault();tryMove(m[0],m[1]);}
+  if(e.key==="z"||e.key==="Z")undo();
+});
+document.getElementById("undoBtn").onclick=undo;
+function undo(){if(walking)return;if(!history.length){document.getElementById("msg").textContent="已经是开局，没法再悔了";return;}restore(history.pop());render();}
+document.getElementById("restartBtn").onclick=function(){loadLevel(levelIndex);};
+document.getElementById("hintBtn").onclick=hint;
+document.getElementById("nextBtn").onclick=function(){loadLevel(levelIndex===LEVELS.length-1?0:levelIndex+1);};
+document.getElementById("replayBtn").onclick=function(){loadLevel(levelIndex);};
+document.getElementById("soundBtn").onclick=function(){soundOn=!soundOn;this.textContent=soundOn?"🔊 音效：开":"🔇 音效：关";};
+/* 棋盘滑动 */
+var sx=0,sy=0;
+var boardEl=document.getElementById("board");
+boardEl.addEventListener("touchstart",function(e){var t=e.touches[0];sx=t.clientX;sy=t.clientY;},{passive:true});
+boardEl.addEventListener("touchend",function(e){
+  var t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<24)return;
+  if(Math.abs(dx)>Math.abs(dy))tryMove(dx>0?1:-1,0);else tryMove(0,dy>0?1:-1);
+},{passive:true});
+loadLevel(0);
+</script>
+</body>
+</html>
