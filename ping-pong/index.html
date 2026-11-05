@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>乒乓大作战 · Lian 的游戏小站</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(160deg,#141e30,#243b55);min-height:100vh;color:#ecf0f1;display:flex;flex-direction:column;align-items:center}
+  header{width:100%;max-width:520px;padding:12px 16px 4px;display:flex;align-items:center;gap:12px}
+  header a{color:#74b9ff;text-decoration:none;font-size:15px;font-weight:700;white-space:nowrap}
+  header h1{font-size:21px;letter-spacing:1px}
+  .hud{width:100%;max-width:520px;padding:8px 16px;display:flex;gap:8px;flex-wrap:wrap}
+  .chip{flex:1;min-width:70px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:7px 6px;text-align:center}
+  .chip .k{font-size:11px;color:#aebfd0}
+  .chip .v{font-size:19px;font-weight:800;margin-top:1px}
+  .stage{width:100%;max-width:520px;padding:4px 12px 0;position:relative}
+  canvas{width:100%;display:block;border-radius:16px;background:linear-gradient(180deg,#0b3d2e 0%,#0d5c40 55%,#0b3d2e 100%);box-shadow:0 14px 34px rgba(0,0,0,.5);touch-action:none}
+  .overlay{position:absolute;inset:4px 12px 0;border-radius:16px;background:rgba(5,20,14,.78);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:20px;backdrop-filter:blur(2px)}
+  .overlay.hidden{display:none}
+  .overlay .big{font-size:52px}
+  .overlay h2{font-size:26px}
+  .overlay p{color:#c7d3e0;font-size:14px;line-height:1.8;max-width:340px}
+  .btn{border:none;cursor:pointer;border-radius:999px;padding:14px 34px;font-size:17px;font-weight:800;color:#fff;background:linear-gradient(135deg,#e17055,#d63031);box-shadow:0 8px 20px rgba(214,48,49,.4);min-height:52px;min-width:170px}
+  .btn:active{transform:scale(.97)}
+  .btn.blue{background:linear-gradient(135deg,#0984e3,#6c5ce7);box-shadow:0 8px 20px rgba(9,132,227,.4)}
+  .btn.green{background:linear-gradient(135deg,#00b894,#00cec9);box-shadow:0 8px 20px rgba(0,184,148,.4)}
+  .diff-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  .diff-btn{border:2px solid rgba(255,255,255,.35);background:rgba(255,255,255,.1);color:#fff;border-radius:14px;padding:12px 18px;font-size:15px;font-weight:800;cursor:pointer;min-height:48px;min-width:88px}
+  .diff-btn.sel{border-color:#ffeaa7;background:rgba(255,234,167,.22)}
+  .diff-btn:active{transform:scale(.97)}
+  .controls{width:100%;max-width:520px;padding:12px 16px 6px;display:flex;gap:10px}
+  .controls button{flex:1;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:#fff;border-radius:14px;padding:13px 6px;font-size:15px;font-weight:700;cursor:pointer;min-height:50px}
+  .controls button:active{background:rgba(255,255,255,.25)}
+  .pad-row{width:100%;max-width:520px;padding:6px 16px 0;display:flex;gap:10px}
+  .pad-row button{flex:1;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.12);color:#fff;border-radius:14px;padding:14px 6px;font-size:22px;font-weight:800;cursor:pointer;min-height:56px;touch-action:none;user-select:none}
+  .pad-row button:active{background:rgba(255,255,255,.25)}
+  .tip{max-width:520px;padding:8px 20px 22px;color:#8fa6b8;font-size:12.5px;line-height:1.9;text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <a href="../">← 回主页</a>
+  <h1>🏓 乒乓大作战</h1>
+</header>
+
+<div class="hud">
+  <div class="chip"><div class="k">你 · 蓝方</div><div class="v" id="scoreYou" style="color:#74b9ff">0</div></div>
+  <div class="chip"><div class="k">先到 7 分获胜</div><div class="v" id="rally">回合 0</div></div>
+  <div class="chip"><div class="k">电脑 · 红方</div><div class="v" id="scoreAi" style="color:#ff7675">0</div></div>
+  <div class="chip"><div class="k">连胜纪录</div><div class="v" id="streak">0</div></div>
+</div>
+
+<div class="stage">
+  <canvas id="game" width="480" height="640"></canvas>
+  <div class="overlay" id="overlay">
+    <div class="big" id="ovEmoji">🏓</div>
+    <h2 id="ovTitle">乒乓大作战</h2>
+    <p id="ovText">竖屏乒乓对决：你在下方，电脑在上方。<br>手指拖动（或移动鼠标 / ← → 键）控制球拍，<br>把球打回对方半场，先拿到 7 分就赢！<br>击球点越靠近拍边，球的角度越刁；回合越长球越快。</p>
+    <div class="diff-row" id="diffRow">
+      <button class="diff-btn" data-diff="easy">😊 简单</button>
+      <button class="diff-btn sel" data-diff="normal">🙂 普通</button>
+      <button class="diff-btn" data-diff="hard">😤 困难</button>
+    </div>
+    <button class="btn green" id="ovBtn">开始比赛</button>
+  </div>
+</div>
+
+<div class="controls">
+  <button id="btnPause">⏸ 暂停</button>
+  <button id="btnRestart">🔄 重新开始</button>
+  <button id="btnSound">🔊 音效开</button>
+</div>
+<div class="pad-row">
+  <button id="btnLeft" aria-label="向左">◀</button>
+  <button id="btnRight" aria-label="向右">▶</button>
+</div>
+<div class="tip">操作：拖动球台 / 移动鼠标 / ← → 或 A D 键 / 底部大按钮 · 发球后球自动开局 · 切出页面自动暂停 · 连胜与最长回合会记下来</div>
+
+<script>
+'use strict';
+(function(){
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var W = canvas.width, H = canvas.height;
+
+  var WIN_SCORE = 7;
+  var PADDLE_W = 96, PADDLE_H = 16, PADDLE_R = 8;
+  var BALL_R = 10;
+  var YOU_Y = H - 56, AI_Y = 40;
+
+  var DIFFS = {
+    easy:   {label:'简单', aiSpeed: 2.6, aiErr: 60, ballSpeed: 4.8},
+    normal: {label:'普通', aiSpeed: 4.2, aiErr: 32, ballSpeed: 5.6},
+    hard:   {label:'困难', aiSpeed: 6.0, aiErr: 10, ballSpeed: 6.8}
+  };
+
+  var state = 'menu'; // menu | serve | play | paused | over
+  var diffKey = 'normal';
+  var you = {x: W/2, vx: 0, targetX: W/2};
+  var ai = {x: W/2, vx: 0};
+  var ball = {x: W/2, y: H/2, vx: 0, vy: 0, speed: 6};
+  var scoreYou = 0, scoreAi = 0, rally = 0, bestRally = 0;
+  var streak = 0, bestStreak = 0;
+  var serveTimer = 0, serveTo = 1; // 1 = 发向电脑，-1 = 发向玩家
+  var particles = [];
+  var flashText = '', flashT = 0;
+  var soundOn = true;
+  var keys = {};
+  var rafId = null, lastTs = 0;
+
+  try {
+    streak = parseInt(localStorage.getItem('pingpong_streak') || '0', 10) || 0;
+    bestStreak = parseInt(localStorage.getItem('pingpong_best_streak') || '0', 10) || 0;
+    bestRally = parseInt(localStorage.getItem('pingpong_best_rally') || '0', 10) || 0;
+  } catch (e) { /* 无痕模式等场景下忽略 */ }
+
+  var elScoreYou = document.getElementById('scoreYou');
+  var elScoreAi = document.getElementById('scoreAi');
+  var elRally = document.getElementById('rally');
+  var elStreak = document.getElementById('streak');
+  var overlay = document.getElementById('overlay');
+  var ovEmoji = document.getElementById('ovEmoji');
+  var ovTitle = document.getElementById('ovTitle');
+  var ovText = document.getElementById('ovText');
+  var ovBtn = document.getElementById('ovBtn');
+  var diffRow = document.getElementById('diffRow');
+  var btnPause = document.getElementById('btnPause');
+  var btnRestart = document.getElementById('btnRestart');
+  var btnSound = document.getElementById('btnSound');
+
+  // ---------- 音效 ----------
+  var audioCtx = null;
+  function beep(freq, dur, type, vol){
+    if (!soundOn) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = type || 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol || 0.12, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(); o.stop(audioCtx.currentTime + dur);
+    } catch (e) { /* 静音失败不影响游戏 */ }
+  }
+  function sfx(kind){
+    if (kind === 'hit') beep(520, 0.07, 'square', 0.08);
+    else if (kind === 'wall') beep(300, 0.05, 'square', 0.05);
+    else if (kind === 'score') beep(880, 0.16, 'sine', 0.14);
+    else if (kind === 'lose') beep(180, 0.3, 'sawtooth', 0.1);
+    else if (kind === 'win') { beep(660, 0.12, 'sine', 0.14); setTimeout(function(){ beep(880, 0.18, 'sine', 0.14); }, 130); }
+  }
+
+  // ---------- 工具 ----------
+  function clamp(v, lo, hi){ return v < lo ? lo : (v > hi ? hi : v); }
+  function roundRect(x, y, w, h, r){
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function spawnParticles(x, y, color, n){
+    for (var i = 0; i < n; i++){
+      var a = Math.random() * Math.PI * 2, s = 1 + Math.random() * 3;
+      particles.push({x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, color: color});
+    }
+  }
+  function updateHud(){
+    elScoreYou.textContent = scoreYou;
+    elScoreAi.textContent = scoreAi;
+    elRally.textContent = '回合 ' + rally;
+    elStreak.textContent = '连胜 ' + streak + (bestStreak > 0 ? ' / 最高 ' + bestStreak : '');
+  }
+
+  // ---------- 发球 / 计分 ----------
+  function resetPositions(){
+    you.x = W / 2; you.targetX = W / 2; you.vx = 0;
+    ai.x = W / 2; ai.vx = 0;
+    ball.x = W / 2; ball.y = H / 2; ball.vx = 0; ball.vy = 0;
+    ball.speed = DIFFS[diffKey].ballSpeed;
+    rally = 0;
+  }
+  function startServe(toYou){
+    state = 'serve';
+    serveTimer = 0;
+    serveTo = toYou ? -1 : 1;
+    resetPositions();
+    ball.y = toYou ? YOU_Y - 40 : AI_Y + 40;
+    updateHud();
+  }
+  function launchBall(){
+    var ang = (Math.random() * 0.6 - 0.3); // 左右随机小角度
+    ball.vx = Math.sin(ang) * ball.speed;
+    ball.vy = Math.cos(ang) * ball.speed * serveTo;
+    state = 'play';
+  }
+  function point(winner){ // 'you' | 'ai'
+    if (winner === 'you'){ scoreYou++; sfx('score'); flashText = '得分！+1'; }
+    else { scoreAi++; sfx('lose'); flashText = '丢了一分'; }
+    flashT = 1;
+    if (rally > bestRally){
+      bestRally = rally;
+      try { localStorage.setItem('pingpong_best_rally', String(bestRally)); } catch (e) {}
+    }
+    updateHud();
+    if (scoreYou >= WIN_SCORE || scoreAi >= WIN_SCORE){ endMatch(scoreYou >= WIN_SCORE); return; }
+    startServe(winner === 'ai'); // 输球一方发球
+  }
+  function endMatch(youWon){
+    state = 'over';
+    if (youWon){
+      streak++;
+      if (streak > bestStreak) bestStreak = streak;
+      try {
+        localStorage.setItem('pingpong_streak', String(streak));
+        localStorage.setItem('pingpong_best_streak', String(bestStreak));
+      } catch (e) {}
+      sfx('win');
+      showOverlay('🏆', '你赢了！', '比分 ' + scoreYou + ' : ' + scoreAi + '，击败了' + DIFFS[diffKey].label + '电脑！<br>当前连胜 ' + streak + ' 场，最高 ' + bestStreak + ' 场。<br>最长回合 ' + bestRally + ' 次击球。', '再来一局');
+    } else {
+      streak = 0;
+      try { localStorage.setItem('pingpong_streak', '0'); } catch (e) {}
+      sfx('lose');
+      showOverlay('😢', '电脑赢了', '比分 ' + scoreYou + ' : ' + scoreAi + '，电脑拿下了这局。<br>连胜清零了，换个难度或再挑战一次吧！<br>最长回合 ' + bestRally + ' 次击球。', '再来一局');
+    }
+    updateHud();
+  }
+
+  // ---------- 流程控制 ----------
+  function showOverlay(emoji, title, html, btnText){
+    ovEmoji.textContent = emoji;
+    ovTitle.textContent = title;
+    ovText.innerHTML = html;
+    ovBtn.textContent = btnText;
+    diffRow.style.display = (state === 'menu' || state === 'over') ? 'flex' : 'none';
+    overlay.classList.remove('hidden');
+  }
+  function hideOverlay(){ overlay.classList.add('hidden'); }
+  function startMatch(){
+    scoreYou = 0; scoreAi = 0;
+    hideOverlay();
+    startServe(false);
+  }
+  function pauseGame(){
+    if (state !== 'play' && state !== 'serve') return;
+    state = 'paused';
+    showOverlay('⏸', '已暂停', '休息一下，回来继续打！', '继续比赛');
+    btnPause.textContent = '▶ 继续';
+  }
+  function resumeGame(){
+    if (state !== 'paused') return;
+    hideOverlay();
+    state = (ball.vx === 0 && ball.vy === 0) ? 'serve' : 'play';
+    serveTimer = 0;
+    btnPause.textContent = '⏸ 暂停';
+  }
+
+  // ---------- 输入 ----------
+  function canvasX(clientX){
+    var r = canvas.getBoundingClientRect();
+    return (clientX - r.left) * (W / r.width);
+  }
+  function pointerMove(clientX){
+    you.targetX = clamp(canvasX(clientX), PADDLE_W / 2 + 6, W - PADDLE_W / 2 - 6);
+  }
+  canvas.addEventListener('pointerdown', function(e){
+    e.preventDefault();
+    if (state === 'menu' || state === 'over') return;
+    if (state === 'paused') return;
+    pointerMove(e.clientX);
+    canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', function(e){
+    if (state !== 'play' && state !== 'serve') return;
+    if (e.buttons === 0 && e.pointerType === 'mouse') { pointerMove(e.clientX); return; }
+    pointerMove(e.clientX);
+  });
+  document.addEventListener('keydown', function(e){
+    keys[e.key] = true;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === ' ') e.preventDefault();
+    if (e.key === ' ' || e.key === 'Enter'){
+      if (state === 'menu' || state === 'over') startMatch();
+      else if (state === 'paused') resumeGame();
+    }
+    if ((e.key === 'p' || e.key === 'P' || e.key === 'Escape')){
+      if (state === 'play' || state === 'serve') pauseGame();
+      else if (state === 'paused') resumeGame();
+    }
+  });
+  document.addEventListener('keyup', function(e){ keys[e.key] = false; });
+
+  function holdButton(btn, dir){
+    var iv = null;
+    function start(e){ e.preventDefault(); keys[dir] = true; }
+    function stop(){ keys[dir] = false; }
+    btn.addEventListener('pointerdown', start);
+    btn.addEventListener('pointerup', stop);
+    btn.addEventListener('pointerleave', stop);
+    btn.addEventListener('pointercancel', stop);
+  }
+  holdButton(document.getElementById('btnLeft'), 'left');
+  holdButton(document.getElementById('btnRight'), 'right');
+
+  diffRow.addEventListener('click', function(e){
+    var b = e.target.closest('.diff-btn');
+    if (!b) return;
+    diffKey = b.getAttribute('data-diff');
+    var btns = diffRow.querySelectorAll('.diff-btn');
+    for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('sel', btns[i] === b);
+  });
+  ovBtn.addEventListener('click', function(){
+    if (state === 'paused') resumeGame();
+    else startMatch();
+  });
+  btnPause.addEventListener('click', function(){
+    if (state === 'paused') resumeGame();
+    else pauseGame();
+  });
+  btnRestart.addEventListener('click', function(){
+    btnPause.textContent = '⏸ 暂停';
+    startMatch();
+  });
+  btnSound.addEventListener('click', function(){
+    soundOn = !soundOn;
+    btnSound.textContent = soundOn ? '🔊 音效开' : '🔇 音效关';
+  });
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden && (state === 'play' || state === 'serve')) pauseGame();
+  });
+
+  // ---------- 更新 ----------
+  function update(dt){
+    // 玩家移动：键盘 / 大按钮优先，否则跟随拖动目标
+    var kbSpeed = 560 * dt;
+    if (keys['ArrowLeft'] || keys['a'] || keys['A'] || keys['left']){
+      you.targetX = clamp(you.targetX - kbSpeed, PADDLE_W / 2 + 6, W - PADDLE_W / 2 - 6);
+    }
+    if (keys['ArrowRight'] || keys['d'] || keys['D'] || keys['right']){
+      you.targetX = clamp(you.targetX + kbSpeed, PADDLE_W / 2 + 6, W - PADDLE_W / 2 - 6);
+    }
+    var prevX = you.x;
+    you.x += (you.targetX - you.x) * Math.min(1, dt * 18);
+    you.vx = (you.x - prevX) / Math.max(dt, 0.001);
+
+    // 电脑 AI：追球，带速度上限与误差
+    var d = DIFFS[diffKey];
+    var aiTarget = ball.x + (ball.vy < 0 ? (Math.random() - 0.5) * d.aiErr : 0);
+    var aiPrev = ai.x;
+    var aiStep = clamp(aiTarget - ai.x, -d.aiSpeed, d.aiSpeed) * dt * 60;
+    ai.x = clamp(ai.x + aiStep, PADDLE_W / 2 + 6, W - PADDLE_W / 2 - 6);
+    ai.vx = (ai.x - aiPrev) / Math.max(dt, 0.001);
+
+    if (state === 'serve'){
+      serveTimer += dt;
+      ball.x = W / 2 + Math.sin(serveTimer * 3) * 6;
+      if (serveTimer > 0.9) launchBall();
+      return;
+    }
+    if (state !== 'play') return;
+
+    // vx/vy 是 60fps 下的每帧像素，乘 dt*60 换算成实际帧间隔
+    ball.x += ball.vx * dt * 60;
+    ball.y += ball.vy * dt * 60;
+
+    // 左右墙
+    if (ball.x < BALL_R + 4){ ball.x = BALL_R + 4; ball.vx = Math.abs(ball.vx); sfx('wall'); }
+    if (ball.x > W - BALL_R - 4){ ball.x = W - BALL_R - 4; ball.vx = -Math.abs(ball.vx); sfx('wall'); }
+
+    // 击球：玩家拍
+    if (ball.vy > 0 && ball.y + BALL_R >= YOU_Y - PADDLE_H / 2 && ball.y + BALL_R <= YOU_Y + PADDLE_H / 2 + 8
+        && Math.abs(ball.x - you.x) <= PADDLE_W / 2 + BALL_R){
+      hitPaddle(you, -1);
+    }
+    // 击球：电脑拍
+    if (ball.vy < 0 && ball.y - BALL_R <= AI_Y + PADDLE_H / 2 && ball.y - BALL_R >= AI_Y - PADDLE_H / 2 - 8
+        && Math.abs(ball.x - ai.x) <= PADDLE_W / 2 + BALL_R){
+      hitPaddle(ai, 1);
+    }
+
+    // 得分
+    if (ball.y < -20) point('you');
+    else if (ball.y > H + 20) point('ai');
+
+    // 粒子
+    for (var i = particles.length - 1; i >= 0; i--){
+      var p = particles[i];
+      p.x += p.vx; p.y += p.vy; p.life -= 0.03;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+    if (flashT > 0) flashT -= dt;
+  }
+
+  function hitPaddle(pad, dirY){
+    var off = clamp((ball.x - pad.x) / (PADDLE_W / 2), -1, 1);
+    var maxAng = Math.PI / 3; // 最大 60°
+    var ang = off * maxAng;
+    ball.speed = Math.min(ball.speed + 0.25, 13);
+    ball.vx = Math.sin(ang) * ball.speed + clamp(pad.vx * 0.02, -1.5, 1.5);
+    ball.vy = Math.cos(ang) * ball.speed * dirY;
+    ball.y = dirY < 0 ? YOU_Y - PADDLE_H / 2 - BALL_R - 1 : AI_Y + PADDLE_H / 2 + BALL_R + 1;
+    rally++;
+    sfx('hit');
+    spawnParticles(ball.x, ball.y, dirY < 0 ? '#74b9ff' : '#ff7675', 10);
+    updateHud();
+  }
+
+  // ---------- 绘制 ----------
+  function drawPaddle(x, y, color1, color2){
+    var g = ctx.createLinearGradient(x - PADDLE_W / 2, y - PADDLE_H / 2, x + PADDLE_W / 2, y + PADDLE_H / 2);
+    g.addColorStop(0, color1); g.addColorStop(1, color2);
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 3;
+    roundRect(x - PADDLE_W / 2, y - PADDLE_H / 2, PADDLE_W, PADDLE_H, PADDLE_R);
+    ctx.fillStyle = g; ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,.35)';
+    roundRect(x - PADDLE_W / 2 + 6, y - PADDLE_H / 2 + 2, PADDLE_W - 12, 4, 2);
+    ctx.fill();
+  }
+  function draw(){
+    ctx.clearRect(0, 0, W, H);
+    // 球台边线
+    ctx.strokeStyle = 'rgba(255,255,255,.35)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(4, 4, W - 8, H - 8);
+    // 中线（球网）
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,.55)';
+    ctx.lineWidth = 4;
+    ctx.setLineDash([14, 12]);
+    ctx.beginPath(); ctx.moveTo(10, H / 2); ctx.lineTo(W - 10, H / 2); ctx.stroke();
+    ctx.restore();
+    // 中圈
+    ctx.strokeStyle = 'rgba(255,255,255,.25)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(W / 2, H / 2, 34, 0, Math.PI * 2); ctx.stroke();
+    // 大比分水印
+    ctx.fillStyle = 'rgba(255,255,255,.13)';
+    ctx.font = '900 120px -apple-system,"PingFang SC",sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(scoreAi, W / 2, H / 2 - 110);
+    ctx.fillText(scoreYou, W / 2, H / 2 + 110);
+    // 难度与回合提示
+    ctx.fillStyle = 'rgba(255,255,255,.55)';
+    ctx.font = '700 13px -apple-system,"PingFang SC",sans-serif';
+    ctx.fillText(DIFFS[diffKey].label + ' · 回合 ' + rally + ' · 最长 ' + bestRally, W / 2, H / 2 - 18);
+    // 球拍
+    drawPaddle(ai.x, AI_Y, '#ff7675', '#d63031');
+    drawPaddle(you.x, YOU_Y, '#74b9ff', '#0984e3');
+    // 拍面小圆标
+    ctx.font = '16px sans-serif';
+    ctx.fillText('🤖', ai.x, AI_Y + 1);
+    ctx.fillText('😀', you.x, YOU_Y + 1);
+    // 球（带拖影）
+    if (state === 'play' || state === 'serve' || state === 'paused'){
+      ctx.save();
+      ctx.shadowColor = '#ffeaa7'; ctx.shadowBlur = 16;
+      var bg = ctx.createRadialGradient(ball.x - 3, ball.y - 3, 1, ball.x, ball.y, BALL_R + 2);
+      bg.addColorStop(0, '#ffffff'); bg.addColorStop(0.6, '#ffeaa7'); bg.addColorStop(1, '#fdcb6e');
+      ctx.fillStyle = bg;
+      ctx.beginPath(); ctx.arc(ball.x, ball.y, BALL_R, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+    // 粒子
+    for (var i = 0; i < particles.length; i++){
+      var p = particles[i];
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    // 得分闪字
+    if (flashT > 0){
+      ctx.globalAlpha = Math.min(1, flashT);
+      ctx.fillStyle = '#ffeaa7';
+      ctx.font = '900 30px -apple-system,"PingFang SC",sans-serif';
+      ctx.fillText(flashText, W / 2, H / 2 + 70);
+      ctx.globalAlpha = 1;
+    }
+    // 发球倒计时提示
+    if (state === 'serve'){
+      ctx.fillStyle = 'rgba(255,255,255,.85)';
+      ctx.font = '800 18px -apple-system,"PingFang SC",sans-serif';
+      ctx.fillText(serveTo < 0 ? '轮到你发球' : '电脑发球', W / 2, H / 2 + 100);
+    }
+  }
+
+  // ---------- 主循环 ----------
+  function loop(ts){
+    rafId = requestAnimationFrame(loop);
+    var dt = lastTs ? Math.min((ts - lastTs) / 1000, 0.05) : 0.016;
+    lastTs = ts;
+    if (state === 'play' || state === 'serve') update(dt);
+    draw();
+  }
+  updateHud();
+  draw();
+  rafId = requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
