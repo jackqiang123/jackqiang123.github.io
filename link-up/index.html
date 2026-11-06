@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>连连看大作战 · 游戏小站</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(160deg,#1a2a6c,#b21f1f 55%,#fdbb2d);min-height:100vh;color:#fff}
+  .wrap{max-width:640px;margin:0 auto;padding:14px 12px 40px}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .back{color:#fff;text-decoration:none;font-size:15px;font-weight:700;background:rgba(255,255,255,.16);padding:9px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.35)}
+  .back:active{transform:scale(.96)}
+  .mute{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.16);color:#fff;font-size:15px;font-weight:700;padding:9px 14px;border-radius:999px;cursor:pointer}
+  h1{text-align:center;font-size:26px;margin:14px 0 2px;text-shadow:0 3px 12px rgba(0,0,0,.4)}
+  .sub{text-align:center;font-size:13px;color:rgba(255,255,255,.85);margin-bottom:12px;line-height:1.6}
+  .hud{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+  .stat{background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.25);border-radius:14px;padding:8px 4px;text-align:center}
+  .stat .v{font-size:20px;font-weight:900;line-height:1.2}
+  .stat .v.low{color:#ff7675;animation:blink 1s infinite}
+  @keyframes blink{50%{opacity:.45}}
+  .stat .k{font-size:11px;color:rgba(255,255,255,.8);margin-top:2px}
+  .bar{height:8px;background:rgba(0,0,0,.3);border-radius:99px;overflow:hidden;margin-bottom:12px}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,#00b894,#fdcb6e);border-radius:99px;transition:width .3s}
+  .board-wrap{position:relative;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.28);border-radius:18px;padding:10px}
+  .board{display:grid;gap:5px;touch-action:manipulation}
+  .tile{aspect-ratio:1;border:none;border-radius:10px;cursor:pointer;font-size:clamp(18px,5.4vw,30px);line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 0 rgba(0,0,0,.28),inset 0 2px 0 rgba(255,255,255,.45);transition:transform .12s,box-shadow .12s,opacity .25s;user-select:none}
+  .tile:active{transform:scale(.93)}
+  .tile.sel{outline:3px solid #ffeaa7;outline-offset:1px;transform:scale(1.1);box-shadow:0 0 0 3px #fdcb6e,0 6px 14px rgba(0,0,0,.4);z-index:2}
+  .tile.hint{outline:3px solid #00cec9;outline-offset:1px;animation:hintpulse .5s infinite alternate}
+  @keyframes hintpulse{from{transform:scale(1)}to{transform:scale(1.14)}}
+  .tile.cursor{box-shadow:0 0 0 3px #fff,0 3px 0 rgba(0,0,0,.28)}
+  .tile.gone{opacity:0;pointer-events:none;transform:scale(.4)}
+  .tile.pop{animation:pop .3s}
+  @keyframes pop{40%{transform:scale(1.25) rotate(8deg)}}
+  #pathSvg{position:absolute;inset:10px;pointer-events:none;z-index:3;overflow:visible}
+  #pathSvg polyline{fill:none;stroke:#ffeaa7;stroke-width:5;stroke-linejoin:round;stroke-linecap:round;filter:drop-shadow(0 0 6px rgba(253,203,110,.9))}
+  .controls{display:flex;gap:8px;margin-top:12px}
+  .btn{flex:1;border:none;border-radius:14px;padding:13px 4px;font-size:15px;font-weight:800;color:#2d3436;background:#fff;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.25)}
+  .btn:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
+  .btn.primary{background:#ffeaa7}
+  .btn:disabled{opacity:.45;cursor:default}
+  .toast{text-align:center;min-height:22px;font-size:14px;font-weight:700;color:#ffeaa7;margin-top:10px;text-shadow:0 2px 6px rgba(0,0,0,.4)}
+  .rules{background:rgba(0,0,0,.25);border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.9;color:rgba(255,255,255,.92);margin-top:14px}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;z-index:10;padding:20px}
+  .modal.show{display:flex}
+  .card{background:#fff;color:#2d3436;border-radius:22px;padding:26px 22px;max-width:360px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .card .big{font-size:52px}
+  .card h2{font-size:24px;margin:8px 0 6px}
+  .card p{font-size:14px;line-height:1.9;color:#636e72}
+  .card .score{font-size:30px;font-weight:900;color:#e17055;margin:6px 0}
+  .card .btn{width:100%;margin-top:10px;background:#0984e3;color:#fff}
+  .card .btn.ghost{background:#dfe6e9;color:#2d3436}
+  @media (max-width:380px){.hud .stat .v{font-size:17px}.btn{font-size:13px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="../">← 回主页</a>
+    <button class="mute" id="muteBtn" type="button">🔊 音效开</button>
+  </div>
+  <h1>🔗 连连看大作战</h1>
+  <p class="sub">点两张相同图案消除，连接线最多拐 2 次弯 · 3 关全通关</p>
+
+  <div class="hud">
+    <div class="stat"><div class="v" id="scoreV">0</div><div class="k">分数</div></div>
+    <div class="stat"><div class="v" id="levelV">第 1 关</div><div class="k">共 3 关</div></div>
+    <div class="stat"><div class="v" id="timeV">150</div><div class="k">剩余秒数</div></div>
+    <div class="stat"><div class="v" id="leftV">24 对</div><div class="k">剩余牌对</div></div>
+  </div>
+  <div class="bar"><i id="timeBar" style="width:100%"></i></div>
+
+  <div class="board-wrap" id="boardWrap">
+    <div class="board" id="board"></div>
+    <svg id="pathSvg"></svg>
+  </div>
+
+  <div class="controls">
+    <button class="btn primary" id="hintBtn" type="button">💡 提示（3）</button>
+    <button class="btn" id="shuffleBtn" type="button">🔀 洗牌（3）</button>
+    <button class="btn" id="pauseBtn" type="button">⏸ 暂停</button>
+    <button class="btn" id="restartBtn" type="button">↻ 重开</button>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <div class="rules">
+    📖 玩法：点两张相同图案的牌，若能用不超过 2 个拐弯的折线连起来就消除；直线、一个弯、两个弯都可以，路线可以绕到棋盘外围。
+    连续快速消除有连击加分；提示和洗牌每关各 3 次；没路可走时会自动洗牌。键盘方向键移动光标，回车/空格选牌。
+  </div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="card">
+    <div class="big" id="modalIcon">🎉</div>
+    <h2 id="modalTitle">过关！</h2>
+    <p id="modalText"></p>
+    <div class="score" id="modalScore"></div>
+    <p id="modalBest" style="font-size:13px"></p>
+    <button class="btn" id="modalMain" type="button">下一关 →</button>
+    <button class="btn ghost" id="modalAgain" type="button">再玩一次</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ============ 纯逻辑（可被 node 测试桩调用） ============ */
+var ICONS = ['🍎','🍊','🍇','🍓','🍉','🍑','🍒','🥝','🍍','🥭','🐶','🐱','🐭','🐰','🦊','🐼','🐨','🦁','🐸','🐷','🍕','🍔','🍩','🍪','🎈','⚽','🏀','🎁','🌸','🌟'];
+var LEVELS = [
+  {cols:8, rows:6, time:150, icons:12},
+  {cols:10, rows:7, time:180, icons:16},
+  {cols:12, rows:8, time:240, icons:20}
+];
+// grid: rows x cols，0=空，其余为图案编号（从 1 起）。padded 坐标：r 0..rows+1, c 0..cols+1，外圈恒为空。
+function paddedGrid(grid, rows, cols){
+  var g = [];
+  for (var r = 0; r < rows + 2; r++){
+    g.push([]);
+    for (var c = 0; c < cols + 2; c++){
+      if (r === 0 || r === rows + 1 || c === 0 || c === cols + 1) g[r].push(0);
+      else g[r].push(grid[r-1][c-1]);
+    }
+  }
+  return g;
+}
+// 两点能否以 ≤2 个拐弯连通；返回 padded 坐标路径点数组（含起点终点），否则 null
+function findPath(grid, rows, cols, a, b){
+  if (a.r === b.r && a.c === b.c) return null;
+  if (grid[a.r][a.c] === 0 || grid[b.r][b.c] === 0) return null;
+  if (grid[a.r][a.c] !== grid[b.r][b.c]) return null;
+  var g = paddedGrid(grid, rows, cols);
+  var sr = a.r + 1, sc = a.c + 1, tr = b.r + 1, tc = b.c + 1;
+  var dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+  // BFS：状态 (r,c,dir,turns)，记录父指针
+  var seen = {}; // key "r,c,dir" -> 最小 turns
+  var queue = [{r:sr, c:sc, dir:-1, turns:0, parent:null}];
+  seen[sr + ',' + sc + ',-1'] = 0;
+  var head = 0;
+  while (head < queue.length){
+    var cur = queue[head++];
+    for (var d = 0; d < 4; d++){
+      var nr = cur.r + dirs[d][0], nc = cur.c + dirs[d][1];
+      var nt = (cur.dir === -1 || cur.dir === d) ? cur.turns : cur.turns + 1;
+      if (nt > 2) continue;
+      if (nr < 0 || nr > rows + 1 || nc < 0 || nc > cols + 1) continue;
+      var isTarget = (nr === tr && nc === tc);
+      if (!isTarget && g[nr][nc] !== 0) continue;
+      var key = nr + ',' + nc + ',' + d;
+      if (seen[key] !== undefined && seen[key] <= nt) continue;
+      seen[key] = nt;
+      var node = {r:nr, c:nc, dir:d, turns:nt, parent:cur};
+      if (isTarget){
+        // 回溯路径，去掉连续共线点
+        var pts = [];
+        var n = node;
+        while (n){ pts.unshift({r:n.r - 1, c:n.c - 1}); n = n.parent; }
+        var out = [pts[0]];
+        for (var i = 1; i < pts.length - 1; i++){
+          var p = pts[i], prev = pts[i-1], next = pts[i+1];
+          if (!((p.r === prev.r && p.r === next.r) || (p.c === prev.c && p.c === next.c))) out.push(p);
+        }
+        out.push(pts[pts.length - 1]);
+        return out;
+      }
+      queue.push(node);
+    }
+  }
+  return null;
+}
+function hasAnyMove(grid, rows, cols){
+  var positions = {};
+  for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++){
+    var v = grid[r][c];
+    if (!v) continue;
+    (positions[v] = positions[v] || []).push({r:r, c:c});
+  }
+  var keys = Object.keys(positions);
+  for (var i = 0; i < keys.length; i++){
+    var list = positions[keys[i]];
+    for (var x = 0; x < list.length; x++) for (var y = x + 1; y < list.length; y++){
+      if (findPath(grid, rows, cols, list[x], list[y])) return {a:list[x], b:list[y]};
+    }
+  }
+  return null;
+}
+function countRemaining(grid, rows, cols){
+  var n = 0;
+  for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) if (grid[r][c]) n++;
+  return n;
+}
+// 生成一副有路可走的牌局
+function buildBoard(cols, rows, iconCount){
+  for (var attempt = 0; attempt < 200; attempt++){
+    var total = cols * rows;
+    var pairCount = total / 2;
+    var icons = [];
+    for (var i = 0; i < pairCount; i++){ var v = 1 + (i % iconCount); icons.push(v); icons.push(v); }
+    // 洗牌：Fisher-Yates
+    for (var j = icons.length - 1; j > 0; j--){
+      var k = Math.floor(Math.random() * (j + 1));
+      var t = icons[j]; icons[j] = icons[k]; icons[k] = t;
+    }
+    var grid = [];
+    var idx = 0;
+    for (var r = 0; r < rows; r++){
+      grid.push([]);
+      for (var c = 0; c < cols; c++) grid[r].push(icons[idx++]);
+    }
+    if (hasAnyMove(grid, rows, cols)) return grid;
+  }
+  return null;
+}
+if (typeof window !== 'undefined') window.__LL = {findPath:findPath, hasAnyMove:hasAnyMove, buildBoard:buildBoard, countRemaining:countRemaining, LEVELS:LEVELS};
+
+/* ============ 界面与游戏流程 ============ */
+var state = null;
+var timerId = null;
+var audioCtx = null;
+var muted = false;
+var BEST_KEY = 'link-up-best';
+
+function $(id){ return document.getElementById(id); }
+function toast(msg){ $('toast').textContent = msg; setTimeout(function(){ if ($('toast').textContent === msg) $('toast').textContent = ''; }, 2600); }
+
+function beep(freq, dur, type, vol){
+  if (muted) return;
+  try{
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = type || 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol || 0.12, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (dur || 0.12));
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + (dur || 0.12));
+  }catch(e){}
+}
+function sfx(name){
+  if (name === 'select') beep(660, 0.06, 'sine', 0.08);
+  else if (name === 'match'){ beep(880, 0.1, 'sine', 0.12); setTimeout(function(){ beep(1320, 0.14, 'sine', 0.12); }, 70); }
+  else if (name === 'bad') beep(180, 0.18, 'sawtooth', 0.07);
+  else if (name === 'shuffle'){ beep(440, 0.07, 'triangle', 0.1); setTimeout(function(){ beep(587, 0.07, 'triangle', 0.1); }, 80); }
+  else if (name === 'win'){ [523,659,784,1047].forEach(function(f,i){ setTimeout(function(){ beep(f, 0.22, 'sine', 0.13); }, i*130); }); }
+  else if (name === 'lose'){ [400,340,280,200].forEach(function(f,i){ setTimeout(function(){ beep(f, 0.22, 'triangle', 0.1); }, i*140); }); }
+}
+
+function tileColor(v){
+  var hues = [0, 24, 45, 120, 160, 200, 260, 300, 330, 15, 90, 190, 220, 280, 350, 60, 140, 240, 320, 100];
+  var h = hues[(v - 1) % hues.length];
+  return 'linear-gradient(145deg, hsl(' + h + ',85%,72%), hsl(' + h + ',80%,58%))';
+}
+
+function newGame(){
+  state = {level:0, score:0, combo:0, lastMatchAt:0, selected:null, cursor:{r:0,c:0}, hints:3, shuffles:3, over:false, paused:false};
+  startLevel(0);
+}
+function startLevel(li){
+  var L = LEVELS[li];
+  state.level = li;
+  state.grid = buildBoard(L.cols, L.rows, L.icons);
+  state.rows = L.rows; state.cols = L.cols;
+  state.timeLeft = L.time; state.timeTotal = L.time;
+  state.selected = null; state.hints = 3; state.shuffles = 3; state.over = false; state.paused = false;
+  state.cursor = {r:0, c:0};
+  renderBoard();
+  updateHud();
+  $('pauseBtn').textContent = '⏸ 暂停';
+  $('modal').classList.remove('show');
+  startTimer();
+}
+function renderBoard(){
+  var board = $('board');
+  board.innerHTML = '';
+  board.style.gridTemplateColumns = 'repeat(' + state.cols + ', 1fr)';
+  for (var r = 0; r < state.rows; r++){
+    for (var c = 0; c < state.cols; c++){
+      var v = state.grid[r][c];
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'tile';
+      b.dataset.r = r; b.dataset.c = c;
+      if (!v){ b.classList.add('gone'); b.textContent = ''; }
+      else { b.textContent = ICONS[v - 1]; b.style.background = tileColor(v); }
+      if (state.cursor.r === r && state.cursor.c === c) b.classList.add('cursor');
+      b.addEventListener('click', onTileClick);
+      board.appendChild(b);
+    }
+  }
+  $('pathSvg').innerHTML = '';
+}
+function tileEl(r, c){ return $('board').children[r * state.cols + c]; }
+function updateHud(){
+  $('scoreV').textContent = state.score;
+  $('levelV').textContent = '第 ' + (state.level + 1) + ' 关';
+  $('timeV').textContent = state.timeLeft;
+  $('timeV').classList.toggle('low', state.timeLeft <= 30);
+  $('timeBar').style.width = Math.max(0, state.timeLeft / state.timeTotal * 100) + '%';
+  $('leftV').textContent = Math.ceil(countRemaining(state.grid, state.rows, state.cols) / 2) + ' 对';
+  $('hintBtn').textContent = '💡 提示（' + state.hints + '）';
+  $('shuffleBtn').textContent = '🔀 洗牌（' + state.shuffles + '）';
+  $('hintBtn').disabled = state.hints <= 0 || state.over;
+  $('shuffleBtn').disabled = state.shuffles <= 0 || state.over;
+}
+function startTimer(){
+  stopTimer();
+  timerId = setInterval(function(){
+    if (state.paused || state.over) return;
+    state.timeLeft--;
+    updateHud();
+    if (state.timeLeft <= 0){ stopTimer(); gameOver(false, '时间到！'); }
+  }, 1000);
+}
+function stopTimer(){ if (timerId){ clearInterval(timerId); timerId = null; } }
+
+function onTileClick(e){
+  if (state.over || state.paused) return;
+  var r = +e.currentTarget.dataset.r, c = +e.currentTarget.dataset.c;
+  state.cursor = {r:r, c:c};
+  selectTile(r, c);
+}
+function selectTile(r, c){
+  if (!state.grid[r][c]) return;
+  if (state.selected && state.selected.r === r && state.selected.c === c){
+    tileEl(r, c).classList.remove('sel');
+    state.selected = null;
+    return;
+  }
+  if (!state.selected){
+    state.selected = {r:r, c:c};
+    tileEl(r, c).classList.add('sel');
+    sfx('select');
+    refreshCursor();
+    return;
+  }
+  var a = state.selected, b = {r:r, c:c};
+  if (state.grid[a.r][a.c] !== state.grid[b.r][b.c]){
+    tileEl(a.r, a.c).classList.remove('sel');
+    state.selected = {r:r, c:c};
+    tileEl(r, c).classList.add('sel');
+    sfx('bad');
+    refreshCursor();
+    return;
+  }
+  var path = findPath(state.grid, state.rows, state.cols, a, b);
+  if (!path){
+    sfx('bad');
+    toast('这两张连不上，换一对试试');
+    tileEl(a.r, a.c).classList.remove('sel');
+    state.selected = {r:r, c:c};
+    tileEl(r, c).classList.add('sel');
+    refreshCursor();
+    return;
+  }
+  // 消除
+  var now = Date.now();
+  state.combo = (now - state.lastMatchAt <= 3000) ? state.combo + 1 : 1;
+  state.lastMatchAt = now;
+  var gain = 100 + (state.combo - 1) * 20;
+  state.score += gain;
+  drawPath(path);
+  sfx('match');
+  var elA = tileEl(a.r, a.c), elB = tileEl(b.r, b.c);
+  elA.classList.remove('sel'); elA.classList.add('pop'); elB.classList.add('pop');
+  state.grid[a.r][a.c] = 0; state.grid[b.r][b.c] = 0;
+  state.selected = null;
+  setTimeout(function(){ elA.classList.add('gone'); elB.classList.add('gone'); }, 220);
+  if (state.combo >= 2) toast('连击 ×' + state.combo + '！+' + gain + ' 分');
+  updateHud();
+  setTimeout(function(){
+    if (countRemaining(state.grid, state.rows, state.cols) === 0){ levelClear(); return; }
+    if (!hasAnyMove(state.grid, state.rows, state.cols)){
+      autoShuffle();
+      toast('没有可连的牌了，已自动洗牌');
+    }
+  }, 260);
+}
+function refreshCursor(){
+  var tiles = $('board').children;
+  for (var i = 0; i < tiles.length; i++) tiles[i].classList.remove('cursor');
+  tileEl(state.cursor.r, state.cursor.c).classList.add('cursor');
+}
+function drawPath(pts){
+  var svg = $('pathSvg');
+  var board = $('board');
+  var w = board.clientWidth, h = board.clientHeight;
+  var cw = w / state.cols, ch = h / state.rows;
+  var d = pts.map(function(p){
+    return ((p.c + 0.5) * cw).toFixed(1) + ',' + ((p.r + 0.5) * ch).toFixed(1);
+  }).join(' ');
+  svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+  svg.innerHTML = '<polyline points="' + d + '"/>';
+  setTimeout(function(){ svg.innerHTML = ''; }, 320);
+}
+function autoShuffle(){
+  var vals = [];
+  for (var r = 0; r < state.rows; r++) for (var c = 0; c < state.cols; c++){
+    if (state.grid[r][c]) vals.push(state.grid[r][c]);
+  }
+  for (var attempt = 0; attempt < 100; attempt++){
+    for (var i = vals.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = vals[i]; vals[i] = vals[j]; vals[j] = t;
+    }
+    var idx = 0;
+    for (var r2 = 0; r2 < state.rows; r2++) for (var c2 = 0; c2 < state.cols; c2++){
+      if (state.grid[r2][c2]) state.grid[r2][c2] = vals[idx++];
+    }
+    if (hasAnyMove(state.grid, state.rows, state.cols)) break;
+  }
+  renderBoard();
+  sfx('shuffle');
+}
+function levelClear(){
+  stopTimer();
+  var bonus = state.timeLeft * 10;
+  state.score += bonus;
+  updateHud();
+  if (state.level >= LEVELS.length - 1){ gameOver(true, ''); return; }
+  sfx('win');
+  showModal('🎉', '第 ' + (state.level + 1) + ' 关通过！',
+    '剩余时间奖励 +' + bonus + ' 分，下一关棋盘更大、图案更多。',
+    '当前总分：' + state.score, '', '下一关 →', function(){ startLevel(state.level + 1); });
+}
+function gameOver(win, reason){
+  state.over = true;
+  stopTimer();
+  var best = 0;
+  try{ best = +localStorage.getItem(BEST_KEY) || 0; }catch(e){}
+  var isBest = state.score > best;
+  if (isBest){ try{ localStorage.setItem(BEST_KEY, String(state.score)); }catch(e){} best = state.score; }
+  if (win){ sfx('win'); showModal('🏆', '全部通关！', '3 关全部消除完毕，你就是连连看高手！', '总分：' + state.score, '最高纪录：' + best + (isBest ? '（新纪录！）' : ''), '再玩一次', function(){ newGame(); }); }
+  else { sfx('lose'); showModal('⏰', reason || '游戏结束', '本局得分 ' + state.score + '，再来一局？', '总分：' + state.score, '最高纪录：' + best, '再玩一次', function(){ newGame(); }); }
+}
+function showModal(icon, title, text, score, best, mainLabel, mainFn){
+  $('modalIcon').textContent = icon;
+  $('modalTitle').textContent = title;
+  $('modalText').textContent = text;
+  $('modalScore').textContent = score;
+  $('modalBest').textContent = best;
+  $('modalMain').textContent = mainLabel;
+  $('modalMain').onclick = mainFn;
+  $('modalAgain').onclick = function(){ newGame(); };
+  $('modal').classList.add('show');
+}
+function useHint(){
+  if (state.over || state.paused || state.hints <= 0) return;
+  var mv = hasAnyMove(state.grid, state.rows, state.cols);
+  if (!mv){ toast('暂时没有可连的牌，试试洗牌'); return; }
+  state.hints--;
+  sfx('select');
+  var a = tileEl(mv.a.r, mv.a.c), b = tileEl(mv.b.r, mv.b.c);
+  a.classList.add('hint'); b.classList.add('hint');
+  setTimeout(function(){ a.classList.remove('hint'); b.classList.remove('hint'); }, 1400);
+  updateHud();
+}
+function useShuffle(){
+  if (state.over || state.paused || state.shuffles <= 0) return;
+  state.shuffles--;
+  state.selected = null;
+  autoShuffle();
+  updateHud();
+}
+function togglePause(){
+  if (state.over) return;
+  state.paused = !state.paused;
+  $('pauseBtn').textContent = state.paused ? '▶ 继续' : '⏸ 暂停';
+  if (state.paused) toast('已暂停');
+}
+function moveCursor(dr, dc){
+  if (state.over || state.paused) return;
+  var r = Math.max(0, Math.min(state.rows - 1, state.cursor.r + dr));
+  var c = Math.max(0, Math.min(state.cols - 1, state.cursor.c + dc));
+  state.cursor = {r:r, c:c};
+  refreshCursor();
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  $('hintBtn').addEventListener('click', useHint);
+  $('shuffleBtn').addEventListener('click', useShuffle);
+  $('pauseBtn').addEventListener('click', togglePause);
+  $('restartBtn').addEventListener('click', function(){ newGame(); toast('已重新开始'); });
+  $('muteBtn').addEventListener('click', function(){
+    muted = !muted;
+    $('muteBtn').textContent = muted ? '🔇 音效关' : '🔊 音效开';
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'ArrowUp'){ moveCursor(-1, 0); e.preventDefault(); }
+    else if (e.key === 'ArrowDown'){ moveCursor(1, 0); e.preventDefault(); }
+    else if (e.key === 'ArrowLeft'){ moveCursor(0, -1); e.preventDefault(); }
+    else if (e.key === 'ArrowRight'){ moveCursor(0, 1); e.preventDefault(); }
+    else if (e.key === 'Enter' || e.key === ' '){ selectTile(state.cursor.r, state.cursor.c); e.preventDefault(); }
+  });
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden && !state.over && !state.paused) togglePause();
+  });
+  newGame();
+});
+</script>
+</body>
+</html>
