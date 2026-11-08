@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>打地鼠大作战 · 游戏小站</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(180deg,#7ec850 0%,#5cb531 55%,#4a9e2c 100%);min-height:100vh;color:#fff;overflow-x:hidden;user-select:none}
+  .wrap{max-width:480px;margin:0 auto;padding:10px 14px 26px;min-height:100vh;display:flex;flex-direction:column}
+  header{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 10px}
+  header a{color:#fff;text-decoration:none;font-size:15px;font-weight:700;background:rgba(0,0,0,.25);padding:8px 14px;border-radius:999px}
+  header h1{font-size:19px;text-shadow:0 2px 6px rgba(0,0,0,.35);letter-spacing:1px}
+  .snd{border:none;background:rgba(0,0,0,.25);color:#fff;font-size:18px;width:38px;height:38px;border-radius:50%;cursor:pointer}
+  .hud{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px}
+  .stat{background:rgba(255,255,255,.92);color:#2d3436;border-radius:14px;padding:8px 6px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+  .stat .lab{font-size:11px;color:#636e72;font-weight:700}
+  .stat .val{font-size:22px;font-weight:900;line-height:1.2}
+  .stat .val.time-low{color:#d63031;animation:blink .5s infinite alternate}
+  @keyframes blink{from{opacity:1}to{opacity:.45}}
+  .bar{display:flex;align-items:center;justify-content:space-between;margin:8px 2px 2px;font-size:14px;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.35)}
+  .hearts{font-size:20px;letter-spacing:2px}
+  .hearts .lost{opacity:.25;filter:grayscale(1)}
+  .combo{color:#ffeaa7;font-size:15px;min-height:20px}
+  .combo.hot{color:#ff7675;animation:pop .3s}
+  @keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.35)}100%{transform:scale(1)}}
+  .level{font-size:13px;background:rgba(0,0,0,.25);padding:4px 10px;border-radius:999px}
+  .field{position:relative;flex:1;background:linear-gradient(180deg,#8fd45e,#6cbf3a 60%,#57a82e);border-radius:22px;padding:18px 14px 22px;margin-top:10px;box-shadow:inset 0 4px 18px rgba(0,0,0,.18),0 8px 22px rgba(0,0,0,.25);overflow:hidden}
+  .field::before,.field::after{content:"🌼";position:absolute;font-size:20px;opacity:.85}
+  .field::before{top:8px;left:10px}
+  .field::after{bottom:8px;right:12px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 10px;position:relative;z-index:2}
+  .hole{position:relative;height:112px;cursor:pointer}
+  .hole .pit{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);width:88%;height:44px;background:radial-gradient(ellipse at center,#3a2410 30%,#2a1a08 75%,#1d1204);border-radius:50%;box-shadow:inset 0 8px 14px rgba(0,0,0,.85),0 3px 0 rgba(255,255,255,.15)}
+  .hole .mound{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:96%;height:26px;background:radial-gradient(ellipse at center,#8a5a2b,#6b4423);border-radius:50%;z-index:3;pointer-events:none;box-shadow:0 2px 5px rgba(0,0,0,.3)}
+  .hole .mole{position:absolute;left:50%;bottom:16px;transform:translate(-50%,105%);width:86%;max-width:104px;transition:transform .16s ease-out;z-index:2;pointer-events:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.3))}
+  .hole .mole.up{transform:translate(-50%,0)}
+  .hole .mole.hit{animation:bonk .28s}
+  @keyframes bonk{0%{transform:translate(-50%,0) rotate(0)}30%{transform:translate(-50%,6px) rotate(-14deg) scale(.92)}100%{transform:translate(-50%,105%) rotate(0)}}
+  .hole .mole.dizzy{animation:dizzy .5s}
+  @keyframes dizzy{0%{transform:translate(-50%,0) rotate(0)}25%{transform:translate(-50%,0) rotate(-12deg)}50%{transform:translate(-50%,0) rotate(10deg)}75%{transform:translate(-50%,0) rotate(-6deg)}100%{transform:translate(-50%,0) rotate(0)}}
+  .hole:active .pit{transform:translateX(-50%) scale(.96)}
+  .hole .key{position:absolute;top:-4px;right:2px;z-index:4;background:rgba(0,0,0,.35);color:#fff;font-size:11px;font-weight:700;width:20px;height:20px;line-height:20px;text-align:center;border-radius:6px}
+  .float{position:absolute;z-index:9;font-weight:900;font-size:22px;text-shadow:0 2px 4px rgba(0,0,0,.5);pointer-events:none;animation:rise 0.9s ease-out forwards}
+  @keyframes rise{0%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-56px) scale(1.25)}}
+  .hammer{position:absolute;z-index:10;font-size:44px;pointer-events:none;transform:translate(-50%,-70%) rotate(-40deg);animation:smash .22s ease-in forwards}
+  @keyframes smash{0%{transform:translate(-50%,-90%) rotate(-70deg) scale(1.15)}60%{transform:translate(-50%,-55%) rotate(18deg) scale(1)}100%{transform:translate(-50%,-60%) rotate(10deg) scale(.95);opacity:0}}
+  .shake{animation:shake .35s}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-9px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
+  .controls{display:flex;gap:10px;margin-top:14px}
+  .btn{flex:1;border:none;border-radius:16px;padding:15px 0;font-size:17px;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:0 5px 0 rgba(0,0,0,.25)}
+  .btn:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
+  .btn.start{background:#fdcb6e;color:#6b4423}
+  .btn.pause{background:rgba(255,255,255,.9);color:#2d3436}
+  .btn:disabled{opacity:.5}
+  .tips{margin-top:12px;background:rgba(0,0,0,.22);border-radius:14px;padding:10px 14px;font-size:13px;line-height:1.9}
+  .tips b{color:#ffeaa7}
+  .overlay{position:absolute;inset:0;z-index:20;background:rgba(20,40,10,.82);border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;backdrop-filter:blur(2px)}
+  .overlay h2{font-size:30px;margin-bottom:10px}
+  .overlay p{font-size:15px;line-height:2;color:#dfe6e9}
+  .overlay .big{font-size:46px;font-weight:900;color:#fdcb6e;margin:6px 0}
+  .overlay .stars{font-size:36px;letter-spacing:6px;margin:4px 0 10px}
+  .overlay .btn{flex:none;padding:15px 42px;margin-top:12px}
+  .hidden{display:none!important}
+  footer{text-align:center;margin-top:14px;font-size:12px;color:rgba(255,255,255,.75)}
+  @media (max-width:360px){.hole{height:98px}.stat .val{font-size:19px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a href="../">← 回主页</a>
+    <h1>🔨 打地鼠大作战</h1>
+    <button class="snd" id="sndBtn" title="音效开关">🔊</button>
+  </header>
+
+  <div class="hud">
+    <div class="stat"><div class="lab">分数</div><div class="val" id="score">0</div></div>
+    <div class="stat"><div class="lab">剩余时间</div><div class="val" id="time">60</div></div>
+    <div class="stat"><div class="lab">最高分</div><div class="val" id="best">0</div></div>
+  </div>
+  <div class="bar">
+    <span class="hearts" id="hearts">❤️❤️❤️</span>
+    <span class="combo" id="combo"></span>
+    <span class="level" id="level">第 1 级</span>
+  </div>
+
+  <div class="field" id="field">
+    <div class="grid" id="grid"></div>
+
+    <div class="overlay" id="startOverlay">
+      <h2>🔨 打地鼠大作战</h2>
+      <p>地鼠从洞里探头就敲它！<br>
+      🐹 普通地鼠 <b>+10</b> · 🪖 钢盔地鼠敲两下 <b>+20</b><br>
+      👑 金地鼠又快又值钱 <b>+50</b> · 💣 炸弹地鼠千万别碰 <b>−30 且扣 1 颗心</b><br>
+      60 秒内敲得越多分越高，连击 5 次起得分翻倍！</p>
+      <button class="btn start" id="startBtn">开始游戏</button>
+      <p style="font-size:12.5px;margin-top:10px">点按洞口 / 键盘 1–9 / 空格开始 · 切出页面自动暂停</p>
+    </div>
+
+    <div class="overlay hidden" id="endOverlay">
+      <h2 id="endTitle">⏰ 时间到！</h2>
+      <div class="big" id="finalScore">0</div>
+      <div class="stars" id="stars">★★★</div>
+      <p id="endDetail"></p>
+      <button class="btn start" id="againBtn">再来一局</button>
+      <p style="font-size:12.5px;margin-top:10px"><a href="../" style="color:#74b9ff">← 回主页看看别的游戏</a></p>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn start" id="ctrlStart">▶ 开始</button>
+    <button class="btn pause" id="pauseBtn" disabled>⏸ 暂停</button>
+  </div>
+
+  <div class="tips">
+    💡 <b>小窍门：</b>金地鼠只露头 0.6 秒，看到金光先敲它；钢盔地鼠第一下只会把它敲晕，别停手；空洞别乱敲，会断连击。难度每 10 秒升一级，地鼠越出越快。
+  </div>
+  <footer>游戏小站 · 纯网页小游戏 · 敲地鼠别敲到手 😄</footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+var BEST_KEY="whack-a-mole-best";
+var FIELD=document.getElementById("field");
+var GRID=document.getElementById("grid");
+var scoreEl=document.getElementById("score");
+var timeEl=document.getElementById("time");
+var bestEl=document.getElementById("best");
+var heartsEl=document.getElementById("hearts");
+var comboEl=document.getElementById("combo");
+var levelEl=document.getElementById("level");
+var startOverlay=document.getElementById("startOverlay");
+var endOverlay=document.getElementById("endOverlay");
+var endTitle=document.getElementById("endTitle");
+var finalScoreEl=document.getElementById("finalScore");
+var starsEl=document.getElementById("stars");
+var endDetail=document.getElementById("endDetail");
+var startBtn=document.getElementById("startBtn");
+var againBtn=document.getElementById("againBtn");
+var ctrlStart=document.getElementById("ctrlStart");
+var pauseBtn=document.getElementById("pauseBtn");
+var sndBtn=document.getElementById("sndBtn");
+
+var st={playing:false,paused:false,score:0,timeLeft:60,hearts:3,combo:0,bestCombo:0,level:1,hits:0,misses:0,golden:0,sound:true,best:0};
+try{st.best=parseInt(localStorage.getItem(BEST_KEY)||"0",10)||0;}catch(e){st.best=0;}
+bestEl.textContent=st.best;
+
+var spawnTimer=null,tickTimer=null;
+var holes=[];
+
+/* ---------- 音效（WebAudio 合成，无外部音频） ---------- */
+var audioCtx=null;
+function beep(freq,dur,type,vol,slideTo){
+  if(!st.sound)return;
+  try{
+    if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==="suspended")audioCtx.resume();
+    var o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.type=type||"sine";o.frequency.setValueAtTime(freq,audioCtx.currentTime);
+    if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,audioCtx.currentTime+dur);
+    g.gain.setValueAtTime(vol||0.15,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+dur);
+    o.connect(g);g.connect(audioCtx.destination);
+    o.start();o.stop(audioCtx.currentTime+dur);
+  }catch(e){}
+}
+function sfx(name){
+  if(name==="pop")beep(500,0.08,"triangle",0.08,900);
+  else if(name==="hit"){beep(180,0.1,"square",0.16,90);beep(1200,0.06,"sine",0.1,700);}
+  else if(name==="gold"){beep(880,0.12,"sine",0.16);setTimeout(function(){beep(1320,0.18,"sine",0.16);},90);}
+  else if(name==="bomb"){beep(120,0.4,"sawtooth",0.22,40);}
+  else if(name==="crack")beep(300,0.07,"square",0.12,150);
+  else if(name==="miss")beep(220,0.08,"sine",0.06,160);
+  else if(name==="end"){beep(523,0.15,"sine",0.15);setTimeout(function(){beep(659,0.15,"sine",0.15);},150);setTimeout(function(){beep(784,0.3,"sine",0.15);},300);}
+  else if(name==="over"){beep(392,0.2,"sine",0.15);setTimeout(function(){beep(311,0.2,"sine",0.15);},200);setTimeout(function(){beep(233,0.4,"sine",0.15);},400);}
+}
+
+/* ---------- 地鼠 SVG（手绘卡通脸） ---------- */
+function moleSVG(type){
+  var body="#a0662c",belly="#d9a066",ear="#8a5220",extra="";
+  if(type==="gold"){body="#e8a91c";belly="#ffd76e";ear="#c78d10";extra='<path d="M28 26 L34 12 L44 22 L54 10 L64 22 L74 12 L80 26 Z" fill="#ffd700" stroke="#b8860b" stroke-width="2" stroke-linejoin="round"/><circle cx="54" cy="19" r="3" fill="#ff4757"/>';}
+  if(type==="bomb"){body="#5a5a66";belly="#8a8a96";ear="#3d3d48";extra='<circle cx="86" cy="26" r="11" fill="#22242e" stroke="#000" stroke-width="1.5"/><path d="M86 15 Q90 6 98 6" stroke="#8a6d3b" stroke-width="2.5" fill="none"/><circle cx="99" cy="6" r="3.5" fill="#ffdd33"/><circle cx="99" cy="6" r="6.5" fill="none" stroke="#ff9f1a" stroke-width="1.5"/>';}
+  var helmet="";
+  if(type==="helmet")helmet='<path d="M22 44 Q22 16 54 16 Q86 16 86 44 L86 48 L22 48 Z" fill="#7f8c8d" stroke="#5d6d7e" stroke-width="2"/><ellipse cx="54" cy="24" rx="16" ry="6" fill="#aab7b8"/><rect x="50" y="12" width="8" height="7" rx="3" fill="#5d6d7e"/>';
+  return '<svg viewBox="0 0 108 96" xmlns="http://www.w3.org/2000/svg">'
+    +'<ellipse cx="30" cy="34" rx="12" ry="13" fill="'+ear+'"/><ellipse cx="78" cy="34" rx="12" ry="13" fill="'+ear+'"/>'
+    +'<ellipse cx="30" cy="36" rx="6" ry="7" fill="#e8b4b8"/><ellipse cx="78" cy="36" rx="6" ry="7" fill="#e8b4b8"/>'
+    +'<ellipse cx="54" cy="58" rx="36" ry="38" fill="'+body+'"/>'
+    +'<ellipse cx="54" cy="72" rx="20" ry="16" fill="'+belly+'"/>'
+    +'<ellipse cx="40" cy="52" rx="6.5" ry="8" fill="#fff"/><ellipse cx="68" cy="52" rx="6.5" ry="8" fill="#fff"/>'
+    +'<circle class="pupil" cx="41" cy="54" r="3.4" fill="#222"/><circle class="pupil" cx="67" cy="54" r="3.4" fill="#222"/>'
+    +'<circle cx="42.4" cy="52.4" r="1.2" fill="#fff"/><circle cx="68.4" cy="52.4" r="1.2" fill="#fff"/>'
+    +'<ellipse cx="54" cy="64" rx="7" ry="5" fill="#ff6b81"/>'
+    +'<path d="M54 69 L54 74 M47 74 Q54 80 61 74" stroke="#6b4423" stroke-width="2" fill="none" stroke-linecap="round"/>'
+    +'<rect x="49" y="74" width="10" height="8" rx="2.5" fill="#fff" stroke="#dfe6e9" stroke-width="1"/>'
+    +'<ellipse cx="32" cy="66" rx="6" ry="3.5" fill="#ff9f9f" opacity=".55"/><ellipse cx="76" cy="66" rx="6" ry="3.5" fill="#ff9f9f" opacity=".55"/>'
+    +'<path d="M20 58 Q12 54 10 48 M88 58 Q96 54 98 48" stroke="#6b4423" stroke-width="1.6" fill="none" stroke-linecap="round"/>'
+    +helmet+extra
+    +'</svg>';
+}
+
+/* ---------- 搭建九宫格 ---------- */
+for(var i=0;i<9;i++){
+  var hole=document.createElement("div");
+  hole.className="hole";hole.dataset.idx=i;
+  hole.innerHTML='<div class="pit"></div><div class="mole"></div><div class="mound"></div><span class="key">'+(i+1)+'</span>';
+  (function(h,idx){
+    h.addEventListener("pointerdown",function(ev){ev.preventDefault();whack(idx,h,ev);});
+  })(hole,i);
+  GRID.appendChild(hole);
+  holes.push({el:hole,moleEl:hole.querySelector(".mole"),type:null,hp:0,up:false,hideAt:0});
+}
+
+/* ---------- 浮字 / 锤子 ---------- */
+function floatText(hole,txt,color){
+  var f=document.createElement("div");f.className="float";f.textContent=txt;f.style.color=color||"#fff";
+  f.style.left=(hole.el.offsetLeft+hole.el.offsetWidth/2)+"px";
+  f.style.top=(hole.el.offsetTop+14)+"px";
+  FIELD.appendChild(f);setTimeout(function(){f.remove();},900);
+}
+function showHammer(hole){
+  var h=document.createElement("div");h.className="hammer";h.textContent="🔨";
+  h.style.left=(hole.el.offsetLeft+hole.el.offsetWidth/2)+"px";
+  h.style.top=(hole.el.offsetTop+34)+"px";
+  FIELD.appendChild(h);setTimeout(function(){h.remove();},240);
+}
+
+/* ---------- 核心逻辑 ---------- */
+function levelOf(elapsed){return Math.min(6,1+Math.floor(elapsed/10));}
+function spawnDelay(){return Math.max(420,950-st.level*90);}
+function upTime(type){
+  var base=Math.max(650,1250-st.level*110);
+  if(type==="gold")return 600;
+  return base;
+}
+function pickType(){
+  var r=Math.random();
+  if(r<0.10)return "gold";
+  if(r<0.22)return "bomb";
+  if(r<0.42)return "helmet";
+  return "normal";
+}
+function spawnMole(){
+  if(!st.playing||st.paused)return;
+  var free=[];
+  for(var i=0;i<9;i++)if(!holes[i].up)free.push(i);
+  if(!free.length)return;
+  var idx=free[Math.floor(Math.random()*free.length)];
+  var h=holes[idx],type=pickType();
+  h.type=type;h.hp=(type==="helmet"?2:1);h.up=true;
+  h.moleEl.innerHTML=moleSVG(type);
+  h.moleEl.classList.remove("hit","dizzy");
+  void h.moleEl.offsetWidth;
+  h.moleEl.classList.add("up");
+  sfx("pop");
+  var dur=upTime(type);
+  h.hideAt=Date.now()+dur;
+  setTimeout(function(){
+    if(h.up&&h.type===type){retreat(h,true);}
+  },dur);
+  var maxUp=1+Math.floor(st.level/2);
+  var cur=0;for(var j=0;j<9;j++)if(holes[j].up)cur++;
+  if(cur<maxUp&&Math.random()<0.45)setTimeout(spawnMole,180);
+}
+function retreat(h,escaped){
+  h.up=false;h.type=null;
+  h.moleEl.classList.remove("up");
+  if(escaped&&st.playing){st.combo=0;renderCombo();}
+}
+function whack(idx,hole,ev){
+  if(!st.playing||st.paused)return;
+  showHammer(hole);
+  if(!hole.up){st.combo=0;st.misses++;renderCombo();sfx("miss");return;}
+  var type=hole.type;
+  if(type==="bomb"){
+    st.score=Math.max(0,st.score-30);
+    st.hearts--;st.combo=0;st.misses++;
+    hole.up=false;hole.type=null;
+    hole.moleEl.classList.remove("up");
+    floatText(hole,"-30 💥","#ff7675");
+    FIELD.classList.remove("shake");void FIELD.offsetWidth;FIELD.classList.add("shake");
+    sfx("bomb");renderAll();
+    if(st.hearts<=0)endGame("💥 炸弹敲太多啦！");
+    return;
+  }
+  hole.hp--;
+  if(hole.hp>0){
+    hole.moleEl.classList.remove("dizzy");void hole.moleEl.offsetWidth;hole.moleEl.classList.add("dizzy");
+    floatText(hole,"钢盔裂了！","#dfe6e9");sfx("crack");return;
+  }
+  var base=type==="gold"?50:(type==="helmet"?20:10);
+  var mult=st.combo>=5?2:1;
+  var pts=base*mult;
+  st.score+=pts;st.combo++;st.hits++;
+  if(st.combo>st.bestCombo)st.bestCombo=st.combo;
+  if(type==="gold")st.golden++;
+  hole.up=false;hole.type=null;
+  hole.moleEl.classList.remove("up");
+  hole.moleEl.classList.add("hit");
+  floatText(hole,"+"+pts+(mult>1?" 🔥":""),type==="gold"?"#ffd700":"#fff");
+  if(type==="gold")sfx("gold");else sfx("hit");
+  renderAll();
+}
+function renderAll(){
+  scoreEl.textContent=st.score;
+  timeEl.textContent=st.timeLeft;
+  timeEl.classList.toggle("time-low",st.timeLeft<=10&&st.playing);
+  heartsEl.innerHTML="";
+  for(var i=0;i<3;i++){var s=document.createElement("span");s.textContent="❤️";if(i>=st.hearts)s.className="lost";heartsEl.appendChild(s);}
+  levelEl.textContent="第 "+st.level+" 级";
+  renderCombo();
+}
+function renderCombo(){
+  if(st.combo>=2){
+    comboEl.textContent="🔥 连击 ×"+st.combo+(st.combo>=5?"（得分×2）":"");
+    comboEl.classList.add("hot");
+  }else{comboEl.textContent="";comboEl.classList.remove("hot");}
+}
+function startGame(){
+  clearInterval(spawnTimer);clearInterval(tickTimer);
+  for(var i=0;i<9;i++){holes[i].up=false;holes[i].type=null;holes[i].moleEl.classList.remove("up","hit","dizzy");}
+  st.playing=true;st.paused=false;st.score=0;st.timeLeft=60;st.hearts=3;st.combo=0;st.bestCombo=0;st.level=1;st.hits=0;st.misses=0;st.golden=0;
+  startOverlay.classList.add("hidden");endOverlay.classList.add("hidden");
+  ctrlStart.textContent="↻ 重新开始";pauseBtn.disabled=false;pauseBtn.textContent="⏸ 暂停";
+  renderAll();
+  var startAt=Date.now();
+  tickTimer=setInterval(function(){
+    if(st.paused)return;
+    st.timeLeft--;
+    var elapsed=60-st.timeLeft;
+    st.level=levelOf(elapsed);
+    renderAll();
+    if(st.timeLeft<=0)endGame("⏰ 时间到！");
+  },1000);
+  function loop(){
+    if(!st.playing)return;
+    if(!st.paused)spawnMole();
+    spawnTimer=setTimeout(loop,spawnDelay());
+  }
+  loop();
+}
+function endGame(title){
+  if(!st.playing)return;
+  st.playing=false;st.paused=false;
+  clearInterval(spawnTimer);clearInterval(tickTimer);
+  for(var i=0;i<9;i++){holes[i].up=false;holes[i].type=null;holes[i].moleEl.classList.remove("up");}
+  var isBest=st.score>st.best;
+  if(isBest){st.best=st.score;try{localStorage.setItem(BEST_KEY,String(st.best));}catch(e){}}
+  bestEl.textContent=st.best;
+  var stars=st.score>=300?3:(st.score>=200?2:(st.score>=100?1:0));
+  endTitle.textContent=title;
+  finalScoreEl.textContent=st.score;
+  starsEl.textContent="★★★".slice(0,stars)+"☆☆☆".slice(0,3-stars);
+  var acc=st.hits+st.misses;
+  endDetail.innerHTML="敲中 <b>"+st.hits+"</b> 只地鼠 · 最高连击 <b>"+st.bestCombo+"</b> · 金地鼠 <b>"+st.golden+"</b> 只"
+    +(isBest?"<br>🎉 新纪录！超过了之前的最高分":"<br>最高分：<b>"+st.best+"</b>");
+  endOverlay.classList.remove("hidden");
+  ctrlStart.textContent="▶ 开始";pauseBtn.disabled=true;
+  if(stars>=2)sfx("end");else sfx("over");
+}
+function togglePause(){
+  if(!st.playing)return;
+  st.paused=!st.paused;
+  pauseBtn.textContent=st.paused?"▶ 继续":"⏸ 暂停";
+  if(st.paused){for(var i=0;i<9;i++){if(holes[i].up){holes[i].moleEl.classList.remove("up");}}}
+  else{for(var j=0;j<9;j++){if(holes[j].up){holes[j].moleEl.classList.add("up");}}}
+}
+startBtn.addEventListener("click",startGame);
+againBtn.addEventListener("click",startGame);
+ctrlStart.addEventListener("click",startGame);
+pauseBtn.addEventListener("click",togglePause);
+sndBtn.addEventListener("click",function(){
+  st.sound=!st.sound;sndBtn.textContent=st.sound?"🔊":"🔇";
+});
+document.addEventListener("keydown",function(e){
+  if(e.key===" "){e.preventDefault();if(!st.playing)startGame();return;}
+  if(e.key==="p"||e.key==="P"){togglePause();return;}
+  var n=parseInt(e.key,10);
+  if(n>=1&&n<=9&&st.playing&&!st.paused)whack(n-1,holes[n-1],null);
+});
+document.addEventListener("visibilitychange",function(){
+  if(document.hidden&&st.playing&&!st.paused)togglePause();
+});
+renderAll();
+
+/* 供自动化测试使用的最小钩子（不影响正常游玩） */
+window.__whackTest={st:st,holes:holes,startGame:startGame,endGame:endGame,spawnMole:spawnMole,whack:whack,levelOf:levelOf};
+})();
+</script>
+</body>
+</html>
