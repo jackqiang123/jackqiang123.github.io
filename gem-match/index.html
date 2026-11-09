@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>宝石消消乐 · 游戏小站</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(160deg,#1a1033,#2d1b4e 45%,#4a2b6d);min-height:100vh;color:#fff;overflow-x:hidden}
+  .wrap{max-width:480px;margin:0 auto;padding:14px 14px 30px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 10px}
+  .topbar a{color:#cbb8ff;text-decoration:none;font-size:15px;font-weight:700}
+  .topbar .mute{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:999px;padding:6px 13px;font-size:13px;cursor:pointer}
+  h1{text-align:center;font-size:26px;letter-spacing:2px;text-shadow:0 3px 14px rgba(0,0,0,.5)}
+  h1 span{font-size:15px;display:block;letter-spacing:1px;color:#d9c8ff;margin-top:4px;font-weight:400}
+  .hud{display:flex;gap:8px;margin:14px 0 10px}
+  .stat{flex:1;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:9px 4px;text-align:center}
+  .stat .k{font-size:11px;color:#cbb8ff;letter-spacing:1px}
+  .stat .v{font-size:20px;font-weight:800;margin-top:2px}
+  .stat .v small{font-size:12px;color:#d9c8ff;font-weight:600}
+  .progress{height:10px;background:rgba(255,255,255,.15);border-radius:99px;overflow:hidden;margin:2px 2px 12px}
+  .progress i{display:block;height:100%;background:linear-gradient(90deg,#f6d365,#fda085,#ff6b9d);border-radius:99px;transition:width .35s}
+  .board-wrap{background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.16);border-radius:18px;padding:8px;box-shadow:0 14px 34px rgba(0,0,0,.4)}
+  .board{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;touch-action:none;user-select:none}
+  .cell{aspect-ratio:1;border-radius:10px;background:rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:background .15s}
+  .cell.sel{background:rgba(255,255,255,.28);box-shadow:0 0 0 2px #ffd166 inset}
+  .cell.cursor{box-shadow:0 0 0 2px rgba(255,255,255,.85) inset}
+  .cell.hintCell{animation:hintPulse .45s ease-in-out 3}
+  @keyframes hintPulse{0%,100%{box-shadow:0 0 0 2px #ffd166 inset}50%{box-shadow:0 0 0 4px #ffd166 inset,0 0 18px #ffd166}}
+  .gem{width:82%;height:82%;position:relative;animation:popIn .18s ease-out}
+  @keyframes popIn{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+  .gem.clearing{animation:clearPop .18s ease-in forwards}
+  @keyframes clearPop{to{transform:scale(1.5) rotate(25deg);opacity:0}}
+  .gem::after{content:"";position:absolute;left:18%;top:12%;width:34%;height:26%;background:rgba(255,255,255,.55);border-radius:50%;filter:blur(1px);transform:rotate(-20deg)}
+  .g0{background:radial-gradient(circle at 35% 30%,#ff8fa3,#e63956 55%,#8f1226);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+  .g1{background:radial-gradient(circle at 35% 30%,#8ecbff,#2f7fe0 55%,#123a7d);clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)}
+  .g2{background:radial-gradient(circle at 35% 30%,#a5f2b0,#27ae60 55%,#0d5c2e);border-radius:50%}
+  .g3{background:radial-gradient(circle at 35% 30%,#ffe98a,#f5b301 55%,#9a6d00);clip-path:polygon(50% 0,100% 38%,82% 100%,18% 100%,0 38%)}
+  .g4{background:radial-gradient(circle at 35% 30%,#d8a8ff,#8e44ad 55%,#4a1d63);border-radius:50% 50% 50% 4px;transform:rotate(-45deg)}
+  .g4::after{transform:rotate(25deg)}
+  .g5{background:radial-gradient(circle at 35% 30%,#9ff5f0,#00b8a9 55%,#00695f);clip-path:polygon(50% 0,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)}
+  .gem.rainbow{background:conic-gradient(#ff5b5b,#ffb84d,#f9f871,#5be584,#4dc3ff,#b07bff,#ff5b5b);border-radius:50%;box-shadow:0 0 14px rgba(255,255,255,.8)}
+  .gem.rainbow::after{left:24%;top:18%;width:30%;height:22%}
+  .gem.line-row::before,.gem.line-col::before{content:"";position:absolute;background:rgba(255,255,255,.95);border-radius:99px;z-index:1}
+  .gem.line-row::before{left:6%;right:6%;top:44%;height:12%}
+  .gem.line-col::before{top:6%;bottom:6%;left:44%;width:12%}
+  .btns{display:flex;gap:10px;margin-top:14px}
+  .btn{flex:1;border:none;border-radius:14px;padding:13px 0;font-size:16px;font-weight:800;cursor:pointer;color:#fff;background:linear-gradient(135deg,#6c5ce7,#a55eea);box-shadow:0 6px 16px rgba(0,0,0,.3)}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3)}
+  .btn:disabled{opacity:.45;cursor:default}
+  .tips{text-align:center;color:#cbb8ff;font-size:13px;line-height:1.9;margin-top:14px}
+  .tips b{color:#ffd166}
+  .overlay{position:fixed;inset:0;background:rgba(10,5,25,.78);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .overlay.show{display:flex}
+  .panel{background:linear-gradient(165deg,#2d1b4e,#1a1033);border:1px solid rgba(255,255,255,.25);border-radius:22px;padding:28px 24px;text-align:center;max-width:340px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+  .panel .big{font-size:52px}
+  .panel h2{font-size:24px;margin:10px 0 6px}
+  .panel p{color:#d9c8ff;font-size:14.5px;line-height:1.9}
+  .panel p b{color:#ffd166;font-size:18px}
+  .panel .btn{width:100%;margin-top:16px}
+  .toast{position:fixed;left:50%;top:38%;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#fff;padding:10px 20px;border-radius:99px;font-size:15px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .25s;z-index:60;white-space:nowrap}
+  .toast.show{opacity:1}
+  .combo{position:fixed;left:50%;top:30%;transform:translateX(-50%) scale(.8);font-size:34px;font-weight:900;color:#ffd166;text-shadow:0 3px 16px rgba(0,0,0,.6);opacity:0;pointer-events:none;z-index:60;transition:all .25s}
+  .combo.show{opacity:1;transform:translateX(-50%) scale(1)}
+  footer{text-align:center;color:#9d86c9;font-size:12px;margin-top:20px;line-height:2}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a href="../">← 回主页</a>
+    <button class="mute" id="muteBtn">🔊 音效开</button>
+  </div>
+  <h1>💎 宝石消消乐<span>滑动或点按交换宝石 · 连成三颗就消除</span></h1>
+
+  <div class="hud">
+    <div class="stat"><div class="k">第 <span id="levelV">1</span> 关</div><div class="v" id="scoreV">0</div></div>
+    <div class="stat"><div class="k">目标分</div><div class="v" id="targetV">1500</div></div>
+    <div class="stat"><div class="k">剩余步数</div><div class="v" id="movesV">25</div></div>
+    <div class="stat"><div class="k">最高分</div><div class="v" id="bestV">0</div></div>
+  </div>
+  <div class="progress"><i id="progBar" style="width:0%"></i></div>
+
+  <div class="board-wrap">
+    <div class="board" id="board"></div>
+  </div>
+
+  <div class="btns">
+    <button class="btn" id="hintBtn">💡 提示 (<span id="hintV">3</span>)</button>
+    <button class="btn ghost" id="shuffleBtn">🔀 洗牌</button>
+    <button class="btn ghost" id="restartBtn">↻ 重新开始</button>
+  </div>
+
+  <div class="tips">
+    连 <b>4</b> 颗变出 <b>直线宝石</b>（消除整行/整列）· 连 <b>5</b> 颗变出 <b>🌈 彩虹宝石</b>（与任意宝石交换，清掉该颜色）<br>
+    连续消除有连击加分 · 键盘方向键移动光标，空格选定、再按方向键交换
+  </div>
+  <footer>纯 HTML/JS 单文件游戏 · 无广告 · 进度只存在本机</footer>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="panel">
+    <div class="big" id="ovIcon">🎉</div>
+    <h2 id="ovTitle">过关啦！</h2>
+    <p id="ovText"></p>
+    <button class="btn" id="ovBtn">下一关 →</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="combo" id="combo"></div>
+
+<script>
+'use strict';
+var ROWS = 8, COLS = 8, COLORS = 6;
+var gmBoard = [];
+var gmScore = 0, gmMoves = 25, gmLevel = 1, gmTarget = 1500;
+var gmBest = 0, gmHints = 3, gmCombo = 0;
+var gmLocked = false, gmOver = false, gmMuted = false;
+var gmSelected = null, gmCursor = {r: 3, c: 3};
+try { gmBest = parseInt(localStorage.getItem('gemMatchBest') || '0', 10) || 0; } catch (e) { gmBest = 0; }
+try { gmMuted = localStorage.getItem('gemMatchMuted') === '1'; } catch (e) { gmMuted = false; }
+
+var boardEl = document.getElementById('board');
+var scoreEl = document.getElementById('scoreV'), targetEl = document.getElementById('targetV');
+var movesEl = document.getElementById('movesV'), bestEl = document.getElementById('bestV');
+var levelEl = document.getElementById('levelV'), hintEl = document.getElementById('hintV');
+var progEl = document.getElementById('progBar'), overlayEl = document.getElementById('overlay');
+var toastEl = document.getElementById('toast'), comboEl = document.getElementById('combo');
+
+function gmRand() { return Math.floor(Math.random() * COLORS); }
+function gmKey(r, c) { return r + ',' + c; }
+function gmCell(r, c) { return gmBoard[r][c]; }
+function gmSleep(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
+
+var gmAudio = null;
+function gmBeep(freq, dur, type, vol) {
+  if (gmMuted) return;
+  try {
+    if (!gmAudio) gmAudio = new (window.AudioContext || window.webkitAudioContext)();
+    if (gmAudio.state === 'suspended') gmAudio.resume();
+    var o = gmAudio.createOscillator(), g = gmAudio.createGain();
+    o.type = type || 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol || 0.12, gmAudio.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, gmAudio.currentTime + dur);
+    o.connect(g); g.connect(gmAudio.destination);
+    o.start(); o.stop(gmAudio.currentTime + dur);
+  } catch (e) { /* 无音频环境时静默 */ }
+}
+function gmSnd(kind) {
+  if (kind === 'swap') gmBeep(420, 0.08, 'triangle', 0.08);
+  else if (kind === 'clear') gmBeep(660, 0.12, 'sine', 0.12);
+  else if (kind === 'bad') gmBeep(160, 0.18, 'sawtooth', 0.06);
+  else if (kind === 'win') { gmBeep(523, 0.15, 'sine', 0.12); setTimeout(function () { gmBeep(659, 0.15, 'sine', 0.12); }, 130); setTimeout(function () { gmBeep(784, 0.3, 'sine', 0.14); }, 260); }
+  else if (kind === 'lose') { gmBeep(330, 0.2, 'sine', 0.1); setTimeout(function () { gmBeep(220, 0.35, 'sine', 0.1); }, 180); }
+}
+
+function gmShowToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  setTimeout(function () { toastEl.classList.remove('show'); }, 1400);
+}
+function gmShowCombo(n) {
+  if (n < 2) return;
+  comboEl.textContent = '连击 x' + n + '！';
+  comboEl.classList.add('show');
+  setTimeout(function () { comboEl.classList.remove('show'); }, 700);
+}
+
+function gmUpdateHud() {
+  scoreEl.textContent = gmScore;
+  targetEl.textContent = gmTarget;
+  movesEl.textContent = gmMoves;
+  bestEl.textContent = Math.max(gmBest, gmScore);
+  levelEl.textContent = gmLevel;
+  hintEl.textContent = gmHints;
+  progEl.style.width = Math.min(100, Math.round(gmScore / gmTarget * 100)) + '%';
+}
+
+function gmRender(clearing) {
+  var html = '';
+  for (var r = 0; r < ROWS; r++) {
+    for (var c = 0; c < COLS; c++) {
+      var cell = gmBoard[r][c];
+      var cls = 'cell';
+      if (gmSelected && gmSelected.r === r && gmSelected.c === c) cls += ' sel';
+      if (gmCursor.r === r && gmCursor.c === c) cls += ' cursor';
+      if (clearing && clearing[gmKey(r, c)]) cls += ' hintCell';
+      html += '<div class="' + cls + '" data-r="' + r + '" data-c="' + c + '">';
+      if (cell) {
+        var gcls = 'gem';
+        if (cell.s === 'rainbow') gcls += ' rainbow';
+        else gcls += ' g' + cell.c;
+        if (cell.s === 'row') gcls += ' line-row';
+        if (cell.s === 'col') gcls += ' line-col';
+        if (clearing && clearing[gmKey(r, c)]) gcls += ' clearing';
+        html += '<div class="' + gcls + '"></div>';
+      }
+      html += '</div>';
+    }
+  }
+  boardEl.innerHTML = html;
+}
+
+/* ---- 纯逻辑：找所有可消除的连线 ---- */
+function gmFindRuns(bd) {
+  var runs = [];
+  var r, c, k, len;
+  for (r = 0; r < ROWS; r++) {
+    c = 0;
+    while (c < COLS) {
+      if (!bd[r][c] || bd[r][c].s === 'rainbow') { c++; continue; }
+      k = c;
+      while (k + 1 < COLS && bd[r][k + 1] && bd[r][k + 1].c === bd[r][c].c && bd[r][k + 1].s !== 'rainbow') k++;
+      len = k - c + 1;
+      if (len >= 3) runs.push({dir: 'h', r: r, c0: c, c1: k, len: len, color: bd[r][c].c});
+      c = k + 1;
+    }
+  }
+  for (c = 0; c < COLS; c++) {
+    r = 0;
+    while (r < ROWS) {
+      if (!bd[r][c] || bd[r][c].s === 'rainbow') { r++; continue; }
+      k = r;
+      while (k + 1 < ROWS && bd[k + 1][c] && bd[k + 1][c].c === bd[r][c].c && bd[k + 1][c].s !== 'rainbow') k++;
+      len = k - r + 1;
+      if (len >= 3) runs.push({dir: 'v', r0: r, r1: k, c: c, len: len, color: bd[r][c].c});
+      r = k + 1;
+    }
+  }
+  return runs;
+}
+
+/* 由连线算出消除集合与特殊宝石生成；focus 为优先放特殊宝石的格子 */
+function gmPlanClear(bd, focus) {
+  var runs = gmFindRuns(bd);
+  if (!runs.length) return null;
+  var clear = {}, creations = [];
+  runs.forEach(function (run) {
+    var cells = [];
+    var i;
+    if (run.dir === 'h') { for (i = run.c0; i <= run.c1; i++) cells.push({r: run.r, c: i}); }
+    else { for (i = run.r0; i <= run.r1; i++) cells.push({r: i, c: run.c}); }
+    var keep = null;
+    if (run.len >= 5) {
+      keep = focus && cells.some(function (p) { return p.r === focus.r && p.c === focus.c; }) ? focus : cells[Math.floor(cells.length / 2)];
+      creations.push({r: keep.r, c: keep.c, s: 'rainbow', color: 0});
+    } else if (run.len === 4) {
+      keep = focus && cells.some(function (p) { return p.r === focus.r && p.c === focus.c; }) ? focus : cells[Math.floor(cells.length / 2)];
+      creations.push({r: keep.r, c: keep.c, s: run.dir === 'h' ? 'row' : 'col', color: run.color});
+    }
+    cells.forEach(function (p) {
+      if (keep && p.r === keep.r && p.c === keep.c) return;
+      clear[gmKey(p.r, p.c)] = true;
+    });
+  });
+  /* 特殊宝石被消除时触发效果，扩充消除集合（迭代直至稳定） */
+  var changed = true, guard = 0;
+  while (changed && guard++ < 10) {
+    changed = false;
+    Object.keys(clear).forEach(function (k) {
+      var parts = k.split(','), rr = +parts[0], cc = +parts[1];
+      var cell = bd[rr][cc];
+      if (!cell || !cell.s) return;
+      if (cell.s === 'row') { for (var c2 = 0; c2 < COLS; c2++) { if (!clear[gmKey(rr, c2)]) { clear[gmKey(rr, c2)] = true; changed = true; } } }
+      else if (cell.s === 'col') { for (var r2 = 0; r2 < ROWS; r2++) { if (!clear[gmKey(r2, cc)]) { clear[gmKey(r2, cc)] = true; changed = true; } } }
+      else if (cell.s === 'rainbow') {
+        var col = gmRand();
+        for (var r3 = 0; r3 < ROWS; r3++) for (var c3 = 0; c3 < COLS; c3++) {
+          if (bd[r3][c3] && bd[r3][c3].c === col && !bd[r3][c3].s) { if (!clear[gmKey(r3, c3)]) { clear[gmKey(r3, c3)] = true; changed = true; } }
+        }
+      }
+    });
+  }
+  /* 被消除的格子不能同时生成特殊宝石 */
+  creations = creations.filter(function (cr) { return !clear[gmKey(cr.r, cr.c)]; });
+  return {clear: clear, creations: creations};
+}
+
+function gmCollapseAndRefill() {
+  for (var c = 0; c < COLS; c++) {
+    var stack = [];
+    for (var r = ROWS - 1; r >= 0; r--) if (gmBoard[r][c]) stack.push(gmBoard[r][c]);
+    for (r = ROWS - 1; r >= 0; r--) {
+      gmBoard[r][c] = stack.length ? stack.shift() : {c: gmRand(), s: null};
+    }
+  }
+}
+
+/* 消除循环：返回本轮总消除数 */
+async function gmResolveCascade(focus) {
+  var totalCleared = 0, steps = 0;
+  while (steps++ < 25) {
+    var plan = gmPlanClear(gmBoard, focus);
+    if (!plan) break;
+    gmCombo++;
+    gmShowCombo(gmCombo);
+    var n = Object.keys(plan.clear).length;
+    totalCleared += n;
+    gmScore += n * 20 * gmCombo;
+    gmRender(plan.clear);
+    gmSnd('clear');
+    await gmSleep(200);
+    Object.keys(plan.clear).forEach(function (k) {
+      var p = k.split(','); gmBoard[+p[0]][+p[1]] = null;
+    });
+    plan.creations.forEach(function (cr) { gmBoard[cr.r][cr.c] = {c: cr.color, s: cr.s}; });
+    gmCollapseAndRefill();
+    gmRender();
+    gmUpdateHud();
+    focus = null;
+    await gmSleep(140);
+  }
+  return totalCleared;
+}
+
+function gmSwapMakesMatch(r1, c1, r2, c2) {
+  var a = gmBoard[r1][c1], b = gmBoard[r2][c2];
+  if (!a || !b) return false;
+  if (a.s === 'rainbow' || b.s === 'rainbow') return true;
+  gmBoard[r1][c1] = b; gmBoard[r2][c2] = a;
+  var ok = gmFindRuns(gmBoard).length > 0;
+  gmBoard[r1][c1] = a; gmBoard[r2][c2] = b;
+  return ok;
+}
+
+function gmFindMove() {
+  for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) {
+    if (c + 1 < COLS && gmSwapMakesMatch(r, c, r, c + 1)) return [r, c, r, c + 1];
+    if (r + 1 < ROWS && gmSwapMakesMatch(r, c, r + 1, c)) return [r, c, r + 1, c];
+  }
+  return null;
+}
+
+function gmShuffleBoard() {
+  var colors = [];
+  for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) {
+    if (gmBoard[r][c] && !gmBoard[r][c].s) colors.push(gmBoard[r][c].c);
+  }
+  for (var attempt = 0; attempt < 200; attempt++) {
+    for (var i = colors.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = colors[i]; colors[i] = colors[j]; colors[j] = t; }
+    var k = 0;
+    for (r = 0; r < ROWS; r++) for (c = 0; c < COLS; c++) {
+      if (gmBoard[r][c] && !gmBoard[r][c].s) gmBoard[r][c].c = colors[k++];
+    }
+    if (!gmFindRuns(gmBoard).length && gmFindMove()) return true;
+  }
+  return false;
+}
+
+async function gmEnsureMove() {
+  if (gmFindMove()) return;
+  gmShowToast('没有可走的路，正在洗牌…');
+  gmShuffleBoard();
+  gmRender();
+}
+
+function gmNewBoard() {
+  gmBoard = [];
+  for (var r = 0; r < ROWS; r++) {
+    gmBoard.push([]);
+    for (var c = 0; c < COLS; c++) {
+      var col;
+      do {
+        col = gmRand();
+      } while ((c >= 2 && gmBoard[r][c - 1].c === col && gmBoard[r][c - 2].c === col) ||
+               (r >= 2 && gmBoard[r - 1][c].c === col && gmBoard[r - 2][c].c === col));
+      gmBoard[r].push({c: col, s: null});
+    }
+  }
+  if (!gmFindMove()) gmShuffleBoard();
+}
+
+async function gmDoSwap(r1, c1, r2, c2) {
+  if (gmLocked || gmOver) return false;
+  if (Math.abs(r1 - r2) + Math.abs(c1 - c2) !== 1) return false;
+  var a = gmBoard[r1][c1], b = gmBoard[r2][c2];
+  if (!a || !b) return false;
+  gmLocked = true;
+  gmSelected = null;
+  gmSnd('swap');
+  gmBoard[r1][c1] = b; gmBoard[r2][c2] = a;
+  gmRender();
+  await gmSleep(120);
+
+  var rainbowCell = null, rainbowPos = null, otherColor = null;
+  if (a.s === 'rainbow') { rainbowCell = a; rainbowPos = {r: r2, c: c2}; otherColor = b.c; }
+  else if (b.s === 'rainbow') { rainbowCell = b; rainbowPos = {r: r1, c: c1}; otherColor = a.c; }
+
+  if (rainbowCell) {
+    var clear = {};
+    if (a.s === 'rainbow' && b.s === 'rainbow') {
+      for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) clear[gmKey(r, c)] = true;
+      gmShowToast('🌈 双彩虹！全屏清空！');
+    } else {
+      for (var rr = 0; rr < ROWS; rr++) for (var cc = 0; cc < COLS; cc++) {
+        if (gmBoard[rr][cc] && gmBoard[rr][cc].c === otherColor && !gmBoard[rr][cc].s) clear[gmKey(rr, cc)] = true;
+      }
+      clear[gmKey(rainbowPos.r, rainbowPos.c)] = true;
+      if (a.s === 'row' || a.s === 'col' || b.s === 'row' || b.s === 'col') {
+        var sp = (a.s === 'row' || a.s === 'col') ? a : b;
+        var sr = (a.s === 'row' || a.s === 'col') ? r1 : r2;
+        var sc = (a.s === 'row' || a.s === 'col') ? c1 : c2;
+        if (sp.s === 'row') for (var c2 = 0; c2 < COLS; c2++) clear[gmKey(sr, c2)] = true;
+        else for (var r2 = 0; r2 < ROWS; r2++) clear[gmKey(r2, sc)] = true;
+      }
+    }
+    gmCombo = 1;
+    var n = Object.keys(clear).length;
+    gmScore += n * 20;
+    gmRender(clear);
+    gmSnd('clear');
+    await gmSleep(220);
+    Object.keys(clear).forEach(function (k) { var p = k.split(','); gmBoard[+p[0]][+p[1]] = null; });
+    gmCollapseAndRefill();
+    gmRender();
+    await gmResolveCascade(null);
+  } else if (gmFindRuns(gmBoard).length) {
+    gmCombo = 0;
+    await gmResolveCascade({r: r2, c: c2});
+  } else {
+    gmBoard[r1][c1] = a; gmBoard[r2][c2] = b;
+    gmRender();
+    gmSnd('bad');
+    gmLocked = false;
+    return false;
+  }
+
+  gmMoves--;
+  gmCombo = 0;
+  if (gmScore > gmBest) {
+    gmBest = gmScore;
+    try { localStorage.setItem('gemMatchBest', String(gmBest)); } catch (e) {}
+  }
+  gmUpdateHud();
+  await gmEnsureMove();
+  gmLocked = false;
+  gmCheckEnd();
+  return true;
+}
+
+function gmCheckEnd() {
+  if (gmScore >= gmTarget) {
+    gmOver = true;
+    var bonus = gmMoves * 50;
+    gmScore += bonus;
+    if (gmScore > gmBest) { gmBest = gmScore; try { localStorage.setItem('gemMatchBest', String(gmBest)); } catch (e) {} }
+    gmUpdateHud();
+    gmSnd('win');
+    document.getElementById('ovIcon').textContent = '🎉';
+    document.getElementById('ovTitle').textContent = '第 ' + gmLevel + ' 关通过！';
+    document.getElementById('ovText').innerHTML = '得分 <b>' + gmScore + '</b>（目标 ' + gmTarget + '）<br>剩余步数奖励 +' + bonus + ' 分<br>下一关目标分更高，继续挑战吧！';
+    document.getElementById('ovBtn').textContent = '下一关 →';
+    overlayEl.classList.add('show');
+  } else if (gmMoves <= 0) {
+    gmOver = true;
+    gmSnd('lose');
+    document.getElementById('ovIcon').textContent = '😢';
+    document.getElementById('ovTitle').textContent = '步数用完啦';
+    document.getElementById('ovText').innerHTML = '本局得分 <b>' + gmScore + '</b>，目标 ' + gmTarget + '，还差 ' + (gmTarget - gmScore) + ' 分<br>再试一次，4 连 5 连多攒特殊宝石更容易过关！';
+    document.getElementById('ovBtn').textContent = '再来一局 ↻';
+    overlayEl.classList.add('show');
+  }
+}
+
+function gmStartLevel(level) {
+  gmLevel = level;
+  gmTarget = 1000 + level * 500;
+  gmMoves = 25;
+  gmScore = 0;
+  gmHints = 3;
+  gmCombo = 0;
+  gmOver = false;
+  gmLocked = false;
+  gmSelected = null;
+  gmNewBoard();
+  overlayEl.classList.remove('show');
+  gmRender();
+  gmUpdateHud();
+}
+
+function gmRestart() {
+  gmStartLevel(1);
+  gmShowToast('新的一局开始啦');
+}
+
+/* ---- 输入：点按 / 滑动 / 键盘 ---- */
+function gmCellFromEvent(e) {
+  var t = e.target.closest ? e.target.closest('.cell') : null;
+  if (!t) return null;
+  return {r: +t.dataset.r, c: +t.dataset.c};
+}
+function gmTapCell(pos) {
+  if (gmLocked || gmOver || !pos) return;
+  gmCursor = {r: pos.r, c: pos.c};
+  if (!gmSelected) { gmSelected = pos; gmSnd('swap'); gmRender(); return; }
+  if (gmSelected.r === pos.r && gmSelected.c === pos.c) { gmSelected = null; gmRender(); return; }
+  if (Math.abs(gmSelected.r - pos.r) + Math.abs(gmSelected.c - pos.c) === 1) {
+    var s = gmSelected;
+    gmDoSwap(s.r, s.c, pos.r, pos.c);
+  } else {
+    gmSelected = pos;
+    gmRender();
+  }
+}
+boardEl.addEventListener('click', function (e) { gmTapCell(gmCellFromEvent(e)); });
+
+var gmSwipeStart = null, gmSwiped = false;
+boardEl.addEventListener('pointerdown', function (e) {
+  var pos = gmCellFromEvent(e);
+  if (pos) gmSwipeStart = {r: pos.r, c: pos.c, x: e.clientX, y: e.clientY};
+});
+boardEl.addEventListener('pointerup', function (e) {
+  if (!gmSwipeStart) return;
+  var dx = e.clientX - gmSwipeStart.x, dy = e.clientY - gmSwipeStart.y;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) > 24) {
+    gmSwiped = true;
+    var dr = 0, dc = 0;
+    if (Math.abs(dx) > Math.abs(dy)) dc = dx > 0 ? 1 : -1; else dr = dy > 0 ? 1 : -1;
+    var r2 = gmSwipeStart.r + dr, c2 = gmSwipeStart.c + dc;
+    if (r2 >= 0 && r2 < ROWS && c2 >= 0 && c2 < COLS) gmDoSwap(gmSwipeStart.r, gmSwipeStart.c, r2, c2);
+    setTimeout(function () { gmSwiped = false; }, 50);
+  }
+  gmSwipeStart = null;
+});
+boardEl.addEventListener('click', function (e) { if (gmSwiped) { e.stopPropagation(); } }, true);
+
+document.addEventListener('keydown', function (e) {
+  if (gmOver) return;
+  var k = e.key;
+  if (k === 'ArrowUp' || k === 'ArrowDown' || k === 'ArrowLeft' || k === 'ArrowRight' || k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'W' || k === 'A' || k === 'S' || k === 'D') {
+    e.preventDefault();
+    var dr = 0, dc = 0;
+    if (k === 'ArrowUp' || k === 'w' || k === 'W') dr = -1;
+    else if (k === 'ArrowDown' || k === 's' || k === 'S') dr = 1;
+    else if (k === 'ArrowLeft' || k === 'a' || k === 'A') dc = -1;
+    else dc = 1;
+    if (gmSelected) {
+      var r2 = gmSelected.r + dr, c2 = gmSelected.c + dc;
+      if (r2 >= 0 && r2 < ROWS && c2 >= 0 && c2 < COLS) gmDoSwap(gmSelected.r, gmSelected.c, r2, c2);
+    } else {
+      gmCursor.r = Math.max(0, Math.min(ROWS - 1, gmCursor.r + dr));
+      gmCursor.c = Math.max(0, Math.min(COLS - 1, gmCursor.c + dc));
+      gmRender();
+    }
+  } else if (k === ' ' || k === 'Enter') {
+    e.preventDefault();
+    gmTapCell({r: gmCursor.r, c: gmCursor.c});
+  }
+});
+
+document.getElementById('hintBtn').addEventListener('click', function () {
+  if (gmLocked || gmOver) return;
+  if (gmHints <= 0) { gmShowToast('提示用完啦'); return; }
+  var mv = gmFindMove();
+  if (!mv) { gmShowToast('没有可走的路，正在洗牌…'); gmShuffleBoard(); gmRender(); return; }
+  gmHints--;
+  gmUpdateHud();
+  var cells = document.querySelectorAll('.cell');
+  [[mv[0], mv[1]], [mv[2], mv[3]]].forEach(function (p) {
+    var el = boardEl.querySelector('[data-r="' + p[0] + '"][data-c="' + p[1] + '"]');
+    if (el) el.classList.add('hintCell');
+  });
+  gmSnd('swap');
+});
+document.getElementById('shuffleBtn').addEventListener('click', function () {
+  if (gmLocked || gmOver) return;
+  gmShuffleBoard();
+  gmRender();
+  gmShowToast('已洗牌');
+});
+document.getElementById('restartBtn').addEventListener('click', gmRestart);
+document.getElementById('ovBtn').addEventListener('click', function () {
+  if (gmScore >= gmTarget && gmMoves >= 0 && document.getElementById('ovTitle').textContent.indexOf('通过') >= 0) {
+    gmStartLevel(gmLevel + 1);
+  } else {
+    gmRestart();
+  }
+});
+document.getElementById('muteBtn').addEventListener('click', function () {
+  gmMuted = !gmMuted;
+  try { localStorage.setItem('gemMatchMuted', gmMuted ? '1' : '0'); } catch (e) {}
+  this.textContent = gmMuted ? '🔇 音效关' : '🔊 音效开';
+});
+if (gmMuted) document.getElementById('muteBtn').textContent = '🔇 音效关';
+document.addEventListener('visibilitychange', function () { /* 回合制，无需自动暂停 */ });
+
+gmStartLevel(1);
+
+/* 供自动化测试的钩子 */
+window.__gm = {
+  state: function () { return {score: gmScore, moves: gmMoves, level: gmLevel, target: gmTarget, over: gmOver, locked: gmLocked, hints: gmHints}; },
+  board: function () { return gmBoard.map(function (row) { return row.map(function (cell) { return cell ? {c: cell.c, s: cell.s} : null; }); }); },
+  setBoard: function (arr) { gmBoard = arr.map(function (row) { return row.map(function (cell) { return cell ? {c: cell.c, s: cell.s} : null; }); }); gmRender(); },
+  swap: gmDoSwap,
+  findMove: gmFindMove,
+  findRuns: function () { return gmFindRuns(gmBoard); },
+  newBoard: gmNewBoard,
+  render: gmRender
+};
+</script>
+</body>
+</html>
