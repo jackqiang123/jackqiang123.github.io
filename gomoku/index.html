@@ -224,7 +224,7 @@ var overlay = document.getElementById('overlay');
 var soundOn = true, audioCtx = null;
 
 var board = newBoard();
-var history = [];          /* [{x,y,color}] */
+var moveHistory = [];          /* [{x,y,color}] */
 var over = false, busy = false;   /* busy: AI 思考中 */
 var difficulty = 'normal';
 var aiFirstFlag = false;
@@ -310,7 +310,7 @@ function setTurn(text, color){
 /* ---- 对局流程 ---- */
 function place(x,y,color){
   board[y][x]=color;
-  history.push({x:x,y:y,color:color});
+  moveHistory.push({x:x,y:y,color:color});
   lastMove={x:x,y:y};
   hintPos=null;
   sndPlace();
@@ -370,7 +370,7 @@ function playerMove(x,y){
 
 function newGame(){
   board = newBoard();
-  history=[]; over=false; busy=false; lastMove=null; hintPos=null;
+  moveHistory=[]; over=false; busy=false; lastMove=null; hintPos=null;
   overlay.classList.remove('show');
   playerColor = aiFirstFlag ? 2 : 1;
   aiColor = playerColor===1 ? 2 : 1;
@@ -398,13 +398,13 @@ canvas.addEventListener('touchstart', function(e){
 document.getElementById('newBtn').addEventListener('click', newGame);
 document.getElementById('againBtn').addEventListener('click', newGame);
 document.getElementById('undoBtn').addEventListener('click', function(){
-  if(busy || history.length===0) return;
-  var n = over ? history.length : 2;   /* 终局后悔棋：整局清空重开更直观，改为只退两步 */
+  if(busy || moveHistory.length===0) return;
+  var n = over ? moveHistory.length : 2;   /* 终局后悔棋：整局清空重开更直观，改为只退两步 */
   if(over){ newGame(); return; }
-  for(var i=0;i<n && history.length;i++){
-    var m=history.pop(); board[m.y][m.x]=0;
+  for(var i=0;i<n && moveHistory.length;i++){
+    var m=moveHistory.pop(); board[m.y][m.x]=0;
   }
-  lastMove = history.length ? history[history.length-1] : null;
+  lastMove = moveHistory.length ? moveHistory[moveHistory.length-1] : null;
   hintPos=null; draw();
   setTurn('轮到你落子（'+(playerColor===1?'黑棋':'白棋')+'）', playerColor);
 });
