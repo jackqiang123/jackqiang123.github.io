@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>泡泡龙大作战 · 游戏小站</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(170deg,#141e30,#243b55 60%,#1b2a4a);min-height:100vh;color:#ecf0f1}
+  .wrap{max-width:460px;margin:0 auto;padding:12px 12px 28px}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 10px}
+  .top a{color:#74b9ff;text-decoration:none;font-size:15px;font-weight:700}
+  .top .title{font-size:19px;font-weight:800;letter-spacing:1px}
+  .top .mute{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.1);color:#fff;border-radius:999px;padding:6px 12px;font-size:14px;cursor:pointer}
+  .hud{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+  .hud .box{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:8px 6px;text-align:center}
+  .hud .box .lab{font-size:11px;color:#b8c9d6}
+  .hud .box .val{font-size:20px;font-weight:800;line-height:1.25}
+  .board{position:relative;border-radius:18px;overflow:hidden;background:linear-gradient(180deg,#0f2a4a 0%,#123a5e 45%,#0e2f4e 100%);box-shadow:0 14px 34px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.14)}
+  canvas{display:block;width:100%;touch-action:none}
+  .overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:rgba(8,18,36,.82);text-align:center;padding:20px;z-index:5}
+  .overlay.show{display:flex}
+  .overlay h2{font-size:30px}
+  .overlay p{font-size:15px;color:#dfe6e9;line-height:1.8}
+  .overlay .stars{font-size:34px;letter-spacing:4px}
+  .btn{border:none;border-radius:999px;padding:13px 30px;font-size:17px;font-weight:800;cursor:pointer;background:#0984e3;color:#fff;box-shadow:0 6px 16px rgba(9,132,227,.45)}
+  .btn:active{transform:scale(.96)}
+  .btn.green{background:#00b894;box-shadow:0 6px 16px rgba(0,184,148,.4)}
+  .btn.ghost{background:rgba(255,255,255,.14);color:#fff;box-shadow:none;border:1px solid rgba(255,255,255,.3)}
+  .controls{display:flex;gap:8px;margin-top:12px}
+  .controls button{flex:1;border:none;border-radius:14px;padding:14px 4px;font-size:16px;font-weight:800;cursor:pointer;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.22)}
+  .controls button:active{transform:scale(.96)}
+  .fire{width:100%;margin-top:10px;border:none;border-radius:16px;padding:16px;font-size:19px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#e17055,#d63031);color:#fff;box-shadow:0 8px 20px rgba(214,48,49,.45)}
+  .fire:active{transform:scale(.97)}
+  .fire:disabled{opacity:.45;box-shadow:none}
+  .tips{margin-top:14px;font-size:13px;color:#b8c9d6;line-height:1.9;text-align:center}
+  .tips b{color:#ffeaa7}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a href="../">← 回主页</a>
+    <div class="title">🫧 泡泡龙大作战</div>
+    <button class="mute" id="muteBtn">🔊 音效</button>
+  </div>
+
+  <div class="hud">
+    <div class="box"><div class="lab">分数</div><div class="val" id="score">0</div></div>
+    <div class="box"><div class="lab">第几关</div><div class="val" id="level">1</div></div>
+    <div class="box"><div class="lab">最高分</div><div class="val" id="best">0</div></div>
+  </div>
+
+  <div class="board">
+    <canvas id="cv" width="400" height="620"></canvas>
+    <div class="overlay" id="startOv">
+      <h2>🫧 泡泡龙</h2>
+      <p>拖动瞄准，松手发射<br>三个以上同色泡泡连在一起就会消除<br>别让泡泡压过红线！</p>
+      <button class="btn green" id="startBtn">开始游戏</button>
+      <p style="font-size:12px;color:#95a5a6">键盘 ← → 瞄准 · 空格发射 · S 换泡</p>
+    </div>
+    <div class="overlay" id="pauseOv">
+      <h2>⏸ 已暂停</h2>
+      <button class="btn" id="resumeBtn">继续</button>
+    </div>
+    <div class="overlay" id="overOv">
+      <h2>💥 游戏结束</h2>
+      <p id="overText"></p>
+      <div class="stars" id="overStars"></div>
+      <button class="btn green" id="againBtn">再玩一次</button>
+    </div>
+    <div class="overlay" id="levelOv">
+      <h2>🎉 过关啦！</h2>
+      <p id="levelText"></p>
+      <button class="btn green" id="nextBtn">下一关 →</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="pauseBtn">⏸ 暂停</button>
+    <button id="swapBtn">🔄 换泡</button>
+    <button id="restartBtn">↺ 重开</button>
+  </div>
+  <button class="fire" id="fireBtn">🎯 发 射</button>
+
+  <div class="tips">
+    👆 在棋盘上<b>拖动瞄准、松手发射</b>，也可以点大按钮发射<br>
+    消除后悬空的泡泡会掉下来，同样得分 · 每打 <b>6 发</b>会压下一排新泡泡<br>
+    颜色越少越好消，善用 🔄 换泡
+  </div>
+</div>
+
+<script>
+'use strict';
+/* 泡泡龙大作战：六角错位棋盘，瞄准发射、三连消除、悬空掉落、压行推进 */
+var cv = document.getElementById('cv');
+var ctx = cv.getContext('2d');
+var W = 400, H = 620;
+var COLS = 8, R = 23, CW = 46, CH = 40, TOP = 23;
+var MAXROWS = 12, DANGER_Y = 480, LAUNCHER_Y = 575, LAUNCHER_X = 200;
+var PUSH_EVERY = 6;
+
+var COLORS = [
+  {base:'#e74c3c', light:'#ff8a7a', dark:'#a93226', name:'红'},
+  {base:'#f1c40f', light:'#ffe66d', dark:'#b7950b', name:'黄'},
+  {base:'#2ecc71', light:'#7dffb0', dark:'#1e8449', name:'绿'},
+  {base:'#3498db', light:'#7fc4f5', dark:'#1a5276', name:'蓝'},
+  {base:'#9b59b6', light:'#d2a6e8', dark:'#6c3483', name:'紫'},
+  {base:'#e67e22', light:'#ffb26b', dark:'#935116', name:'橙'}
+];
+
+var BEST_KEY = 'bubbleShooterBestV1';
+var state = 'start'; // start | aim | flying | resolving | paused | over | levelclear
+var prevState = 'aim';
+var grid = [];       // grid[row][col] = colorIdx | null
+var level = 1, score = 0, best = 0, combo = 0;
+var shotsFired = 0, shotsSincePush = 0;
+var curColor = 0, nextColor = 0;
+var angle = 0;       // 瞄准角，0=正上方，弧度，±1.31 (±75°)
+var bullet = null;   // {x,y,dx,dy,color}
+var pops = [];       // {row,col,color,t}
+var falls = [];      // {x,y,color,vy,t}
+var aiming = false;
+var soundOn = true;
+var audioCtx = null;
+
+try { best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0; } catch (e) { best = 0; }
+document.getElementById('best').textContent = best;
+
+function cellX(row, col) { return TOP + col * CW + (row % 2 ? R : 0); }
+function cellY(row) { return TOP + row * CH; }
+
+function colorsForLevel(lv) { return Math.min(3 + lv, COLORS.length); }
+function rowsForLevel(lv) { return Math.min(4 + lv, 8); }
+
+function randColor() { return Math.floor(Math.random() * colorsForLevel(level)); }
+
+function setupLevel(lv) {
+  grid = [];
+  var rows = rowsForLevel(lv);
+  for (var r = 0; r < MAXROWS; r++) {
+    grid.push(new Array(COLS).fill(null));
+  }
+  for (var rr = 0; rr < rows; rr++) {
+    for (var c = 0; c < COLS; c++) {
+      if (rr % 2 === 1 && c === COLS - 1) continue; // 奇数行少一格，贴合六角错位
+      grid[rr][c] = randColor();
+    }
+  }
+  curColor = randColor();
+  nextColor = randColor();
+  shotsFired = 0; shotsSincePush = 0; combo = 0;
+  bullet = null; pops = []; falls = [];
+  angle = 0;
+}
+
+function countBubbles() {
+  var n = 0;
+  for (var r = 0; r < MAXROWS; r++) for (var c = 0; c < COLS; c++) if (grid[r][c] !== null) n++;
+  return n;
+}
+
+function neighbors(r, c) {
+  var out = [[r, c - 1], [r, c + 1]];
+  if (r % 2 === 0) { out.push([r - 1, c - 1], [r - 1, c], [r + 1, c - 1], [r + 1, c]); }
+  else { out.push([r - 1, c], [r - 1, c + 1], [r + 1, c], [r + 1, c + 1]); }
+  return out.filter(function (p) { return p[0] >= 0 && p[0] < MAXROWS && p[1] >= 0 && p[1] < COLS; });
+}
+
+function floodSame(r, c) {
+  var color = grid[r][c];
+  var seen = {}, q = [[r, c]], res = [];
+  seen[r + ',' + c] = true;
+  while (q.length) {
+    var p = q.pop();
+    res.push(p);
+    neighbors(p[0], p[1]).forEach(function (nb) {
+      var k = nb[0] + ',' + nb[1];
+      if (!seen[k] && grid[nb[0]][nb[1]] === color) { seen[k] = true; q.push(nb); }
+    });
+  }
+  return res;
+}
+
+function floatingCells() {
+  var attached = {}, q = [];
+  for (var c = 0; c < COLS; c++) {
+    if (grid[0][c] !== null) { attached['0,' + c] = true; q.push([0, c]); }
+  }
+  while (q.length) {
+    var p = q.pop();
+    neighbors(p[0], p[1]).forEach(function (nb) {
+      var k = nb[0] + ',' + nb[1];
+      if (!attached[k] && grid[nb[0]][nb[1]] !== null) { attached[k] = true; q.push(nb); }
+    });
+  }
+  var out = [];
+  for (var r = 0; r < MAXROWS; r++) for (var cc = 0; cc < COLS; cc++) {
+    if (grid[r][cc] !== null && !attached[r + ',' + cc]) out.push([r, cc]);
+  }
+  return out;
+}
+
+/* ---------- 音效 ---------- */
+function beep(freq, dur, type, vol) {
+  if (!soundOn) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = type || 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol || 0.12, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + dur);
+  } catch (e) { /* 无音频环境时静默 */ }
+}
+function sfxShoot() { beep(520, 0.08, 'square', 0.06); }
+function sfxPop(n) { beep(660 + n * 60, 0.15, 'sine', 0.14); setTimeout(function () { beep(880 + n * 60, 0.18, 'sine', 0.12); }, 70); }
+function sfxFall() { beep(300, 0.2, 'triangle', 0.1); }
+function sfxOver() { beep(220, 0.3, 'sawtooth', 0.1); setTimeout(function () { beep(160, 0.5, 'sawtooth', 0.1); }, 200); }
+function sfxWin() { [523, 659, 784, 1047].forEach(function (f, i) { setTimeout(function () { beep(f, 0.22, 'sine', 0.13); }, i * 110); }); }
+
+/* ---------- 发射与落点 ---------- */
+function fire() {
+  if (state !== 'aim') return;
+  bullet = { x: LAUNCHER_X, y: LAUNCHER_Y - R - 4, dx: Math.sin(angle), dy: -Math.cos(angle), color: curColor };
+  state = 'flying';
+  shotsFired++;
+  shotsSincePush++;
+  sfxShoot();
+  updateFireBtn();
+}
+
+function snapCell(x, y) {
+  var r = Math.round((y - TOP) / CH);
+  r = Math.max(0, Math.min(MAXROWS - 1, r));
+  var c = Math.round((x - TOP - (r % 2 ? R : 0)) / CW);
+  c = Math.max(0, Math.min(COLS - 1, c));
+  if (r % 2 === 1 && c === COLS - 1) c = COLS - 2;
+  if (grid[r][c] === null) return [r, c];
+  var bestCell = null, bestD = 1e9;
+  for (var rr = 0; rr < MAXROWS; rr++) for (var cc = 0; cc < COLS; cc++) {
+    if (grid[rr][cc] !== null) continue;
+    if (rr % 2 === 1 && cc === COLS - 1) continue;
+    var d = Math.hypot(cellX(rr, cc) - x, cellY(rr) - y);
+    if (d < bestD) { bestD = d; bestCell = [rr, cc]; }
+  }
+  return bestCell || [0, 0];
+}
+
+function landBullet() {
+  var cell = snapCell(bullet.x, bullet.y);
+  var r = cell[0], c = cell[1];
+  grid[r][c] = bullet.color;
+  bullet = null;
+  resolveBoard(r, c);
+}
+
+function resolveBoard(r, c) {
+  state = 'resolving';
+  var group = floodSame(r, c);
+  if (group.length >= 3) {
+    combo++;
+    var pts = group.length * 10 * Math.max(1, combo);
+    score += pts;
+    group.forEach(function (p) { pops.push({ row: p[0], col: p[1], color: grid[p[0]][p[1]], t: 0 }); grid[p[0]][p[1]] = null; });
+    sfxPop(group.length);
+  } else {
+    combo = 0;
+  }
+  var floats = floatingCells();
+  floats.forEach(function (p) {
+    falls.push({ x: cellX(p[0], p[1]), y: cellY(p[0]), color: grid[p[0]][p[1]], vy: 1, t: 0 });
+    grid[p[0]][p[1]] = null;
+  });
+  if (floats.length) { score += floats.length * 5; sfxFall(); }
+  updateHUD();
+  setTimeout(afterResolve, 380);
+}
+
+function afterResolve() {
+  pops = []; falls = [];
+  if (countBubbles() === 0) { levelClear(); return; }
+  if (dangerReached()) { gameOver(false); return; }
+  if (shotsSincePush >= PUSH_EVERY) {
+    shotsSincePush = 0;
+    var overflow = pushRow();
+    if (overflow || dangerReached()) { gameOver(false); return; }
+  }
+  curColor = nextColor;
+  nextColor = randColor();
+  state = 'aim';
+  updateFireBtn();
+}
+
+function pushRow() {
+  var overflow = false;
+  for (var c0 = 0; c0 < COLS; c0++) if (grid[MAXROWS - 1][c0] !== null) overflow = true;
+  for (var r = MAXROWS - 1; r > 0; r--) grid[r] = grid[r - 1].slice();
+  grid[0] = new Array(COLS).fill(null);
+  for (var c = 0; c < COLS; c++) {
+    if (c === COLS - 1) continue; // 顶行偶数行满格
+    grid[0][c] = randColor();
+  }
+  beep(180, 0.15, 'square', 0.08);
+  return overflow;
+}
+
+function dangerReached() {
+  for (var r = 0; r < MAXROWS; r++) for (var c = 0; c < COLS; c++) {
+    if (grid[r][c] !== null && cellY(r) + R >= DANGER_Y) return true;
+  }
+  return false;
+}
+
+function levelClear() {
+  var bonus = 500;
+  score += bonus;
+  updateHUD();
+  saveBest();
+  state = 'levelclear';
+  sfxWin();
+  document.getElementById('levelText').innerHTML =
+    '第 ' + level + ' 关清版！奖励 <b style="color:#ffeaa7">+' + bonus + ' 分</b><br>当前分数：' + score;
+  showOverlay('levelOv');
+  updateFireBtn();
+}
+
+function gameOver(win) {
+  state = 'over';
+  saveBest();
+  sfxOver();
+  var stars = score >= 1500 ? '★★★' : score >= 800 ? '★★☆' : score >= 300 ? '★☆☆' : '☆☆☆';
+  document.getElementById('overText').innerHTML =
+    '泡泡压过红线了！<br>得分：<b style="color:#ffeaa7">' + score + '</b> · 闯到第 ' + level + ' 关 · 发射 ' + shotsFired + ' 发<br>最高分：' + best;
+  document.getElementById('overStars').textContent = stars;
+  showOverlay('overOv');
+  updateFireBtn();
+}
+
+function saveBest() {
+  if (score > best) {
+    best = score;
+    try { localStorage.setItem(BEST_KEY, String(best)); } catch (e) {}
+    document.getElementById('best').textContent = best;
+  }
+}
+
+function updateHUD() {
+  document.getElementById('score').textContent = score;
+  document.getElementById('level').textContent = level;
+}
+function updateFireBtn() {
+  document.getElementById('fireBtn').disabled = (state !== 'aim');
+}
+
+/* ---------- 绘制 ---------- */
+function drawBubble(x, y, colorIdx, scale, alpha) {
+  var col = COLORS[colorIdx];
+  ctx.save();
+  ctx.globalAlpha = alpha === undefined ? 1 : alpha;
+  ctx.translate(x, y);
+  ctx.scale(scale || 1, scale || 1);
+  var g = ctx.createRadialGradient(-7, -8, 2, 0, 0, R);
+  g.addColorStop(0, col.light);
+  g.addColorStop(0.55, col.base);
+  g.addColorStop(1, col.dark);
+  ctx.beginPath(); ctx.arc(0, 0, R - 1, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+  ctx.beginPath(); ctx.arc(-8, -9, 6, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fill();
+  // 小表情
+  ctx.fillStyle = 'rgba(40,20,20,.85)';
+  ctx.beginPath(); ctx.arc(-7, -2, 2.6, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(7, -2, 2.6, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(40,20,20,.85)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(0, 3, 6, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+  ctx.restore();
+}
+
+function drawTrajectory() {
+  if (state !== 'aim') return;
+  var x = LAUNCHER_X, y = LAUNCHER_Y - R - 4;
+  var dx = Math.sin(angle), dy = -Math.cos(angle);
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  var drawn = 0;
+  for (var i = 0; i < 160 && drawn < 12; i++) {
+    x += dx * 7; y += dy * 7;
+    if (x < R) { x = R; dx = -dx; }
+    if (x > W - R) { x = W - R; dx = -dx; }
+    if (y < TOP + R) break;
+    // 碰到已有泡泡就停
+    var hit = false;
+    for (var r = 0; r < MAXROWS && !hit; r++) for (var c = 0; c < COLS; c++) {
+      if (grid[r][c] !== null && Math.hypot(cellX(r, c) - x, cellY(r) - y) < R * 2) { hit = true; break; }
+    }
+    if (hit) break;
+    if (i % 4 === 0) { ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill(); drawn++; }
+  }
+  // 瞄准箭头
+  ctx.save();
+  ctx.translate(LAUNCHER_X, LAUNCHER_Y - R - 4);
+  ctx.rotate(angle);
+  ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(0, -R - 6); ctx.lineTo(0, -R - 26); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.9)';
+  ctx.beginPath(); ctx.moveTo(0, -R - 36); ctx.lineTo(-6, -R - 24); ctx.lineTo(6, -R - 24); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  // 危险线
+  ctx.strokeStyle = 'rgba(214,48,49,.85)'; ctx.lineWidth = 3; ctx.setLineDash([10, 7]);
+  ctx.beginPath(); ctx.moveTo(6, DANGER_Y); ctx.lineTo(W - 6, DANGER_Y); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(255,120,120,.9)'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('⚠ 危险线', 10, DANGER_Y - 6);
+  // 棋盘泡泡
+  for (var r = 0; r < MAXROWS; r++) for (var c = 0; c < COLS; c++) {
+    if (grid[r][c] === null) continue;
+    var popping = false;
+    for (var i = 0; i < pops.length; i++) if (pops[i].row === r && pops[i].col === c) { popping = true; break; }
+    if (popping) continue;
+    drawBubble(cellX(r, c), cellY(r), grid[r][c], 1, 1);
+  }
+  // 消除动画
+  pops.forEach(function (p) {
+    p.t += 1 / 60;
+    var s = 1 + p.t * 1.6, a = Math.max(0, 1 - p.t * 2.6);
+    drawBubble(cellX(p.row, p.col), cellY(p.row), p.color, s, a);
+  });
+  // 掉落动画
+  falls.forEach(function (f) {
+    f.t += 1 / 60; f.vy += 0.35; f.y += f.vy * 3;
+    drawBubble(f.x, f.y, f.color, 1, Math.max(0, 1 - f.t * 1.4));
+  });
+  drawTrajectory();
+  // 发射器
+  ctx.save();
+  ctx.translate(LAUNCHER_X, LAUNCHER_Y);
+  var g = ctx.createRadialGradient(-6, -8, 2, 0, 0, 34);
+  g.addColorStop(0, '#636e72'); g.addColorStop(0.6, '#2d3436'); g.addColorStop(1, '#13181c');
+  ctx.beginPath(); ctx.arc(0, 0, 33, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.restore();
+  if (state === 'aim' || state === 'flying' || state === 'resolving') {
+    drawBubble(LAUNCHER_X, LAUNCHER_Y, curColor, 1, 1);
+  }
+  // 下一个泡泡
+  ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('下一个', LAUNCHER_X + 78, LAUNCHER_Y - 22);
+  drawBubble(LAUNCHER_X + 78, LAUNCHER_Y + 2, nextColor, 0.62, 1);
+  // 剩余泡泡
+  ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'right';
+  ctx.fillText('剩余 ' + countBubbles() + ' 个', W - 10, H - 8);
+  // 飞行中的子弹
+  if (bullet) drawBubble(bullet.x, bullet.y, bullet.color, 1, 1);
+}
+
+function step() {
+  if (bullet && state === 'flying') {
+    bullet.x += bullet.dx * 11;
+    bullet.y += bullet.dy * 11;
+    if (bullet.x < R) { bullet.x = R; bullet.dx = -bullet.dx; }
+    if (bullet.x > W - R) { bullet.x = W - R; bullet.dx = -bullet.dx; }
+    if (bullet.y - R <= 6) { landBullet(); }
+    else {
+      var hit = false;
+      for (var r = 0; r < MAXROWS && !hit; r++) for (var c = 0; c < COLS; c++) {
+        if (grid[r][c] !== null && Math.hypot(cellX(r, c) - bullet.x, cellY(r) - bullet.y) < R * 2 - 2) { hit = true; break; }
+      }
+      if (hit) landBullet();
+    }
+  }
+}
+
+function loop() {
+  if (state !== 'paused') { step(); draw(); }
+  requestAnimationFrame(loop);
+}
+
+/* ---------- 界面与输入 ---------- */
+function showOverlay(id) {
+  ['startOv', 'pauseOv', 'overOv', 'levelOv'].forEach(function (x) {
+    document.getElementById(x).classList.toggle('show', x === id);
+  });
+}
+function hideOverlays() { showOverlay(''); }
+
+function startGame() {
+  level = 1; score = 0;
+  setupLevel(1);
+  updateHUD();
+  hideOverlays();
+  state = 'aim';
+  updateFireBtn();
+}
+
+function angleFromPoint(px, py) {
+  var rect = cv.getBoundingClientRect();
+  var x = (px - rect.left) * (W / rect.width);
+  var y = (py - rect.top) * (H / rect.height);
+  var a = Math.atan2(x - LAUNCHER_X, (LAUNCHER_Y - R - 4) - y);
+  return Math.max(-1.31, Math.min(1.31, a));
+}
+
+cv.addEventListener('pointerdown', function (e) {
+  if (state !== 'aim') return;
+  aiming = true;
+  angle = angleFromPoint(e.clientX, e.clientY);
+  e.preventDefault();
+});
+cv.addEventListener('pointermove', function (e) {
+  if (!aiming || state !== 'aim') return;
+  angle = angleFromPoint(e.clientX, e.clientY);
+  e.preventDefault();
+});
+cv.addEventListener('pointerup', function (e) {
+  if (!aiming) return;
+  aiming = false;
+  if (state === 'aim') { angle = angleFromPoint(e.clientX, e.clientY); fire(); }
+});
+cv.addEventListener('pointercancel', function () { aiming = false; });
+
+document.getElementById('fireBtn').addEventListener('click', fire);
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('againBtn').addEventListener('click', startGame);
+document.getElementById('restartBtn').addEventListener('click', function () { if (state !== 'start') startGame(); });
+document.getElementById('nextBtn').addEventListener('click', function () {
+  level++;
+  setupLevel(level);
+  updateHUD();
+  hideOverlays();
+  state = 'aim';
+  updateFireBtn();
+});
+document.getElementById('swapBtn').addEventListener('click', function () {
+  if (state !== 'aim') return;
+  var t = curColor; curColor = nextColor; nextColor = t;
+  beep(440, 0.06, 'sine', 0.08);
+});
+document.getElementById('pauseBtn').addEventListener('click', togglePause);
+document.getElementById('resumeBtn').addEventListener('click', togglePause);
+document.getElementById('muteBtn').addEventListener('click', function () {
+  soundOn = !soundOn;
+  this.textContent = soundOn ? '🔊 音效' : '🔇 静音';
+});
+
+function togglePause() {
+  if (state === 'paused') {
+    state = prevState;
+    hideOverlays();
+    document.getElementById('pauseBtn').textContent = '⏸ 暂停';
+  } else if (state === 'aim' || state === 'flying' || state === 'resolving') {
+    prevState = state;
+    state = 'paused';
+    showOverlay('pauseOv');
+    document.getElementById('pauseBtn').textContent = '▶ 继续';
+  }
+}
+
+document.addEventListener('keydown', function (e) {
+  if (state === 'aim') {
+    if (e.key === 'ArrowLeft') { angle = Math.max(-1.31, angle - 0.07); e.preventDefault(); }
+    else if (e.key === 'ArrowRight') { angle = Math.min(1.31, angle + 0.07); e.preventDefault(); }
+    else if (e.key === ' ' || e.key === 'Enter') { fire(); e.preventDefault(); }
+    else if (e.key === 's' || e.key === 'S') {
+      var t = curColor; curColor = nextColor; nextColor = t;
+    }
+  }
+  if (e.key === 'p' || e.key === 'P') togglePause();
+  if (e.key === 'r' || e.key === 'R') { if (state !== 'start') startGame(); }
+});
+
+document.addEventListener('visibilitychange', function () {
+  if (document.hidden && (state === 'aim' || state === 'flying' || state === 'resolving')) togglePause();
+});
+
+setupLevel(1);
+updateHUD();
+showOverlay('startOv');
+updateFireBtn();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
