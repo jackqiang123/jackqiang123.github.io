@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>迷宫探险 · 游戏小站</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(160deg,#141e30,#243b55 60%,#2c5364);min-height:100vh;color:#ecf0f1;padding:12px 10px 28px}
+  .wrap{max-width:520px;margin:0 auto}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:4px 2px 10px}
+  .topbar a{color:#74b9ff;text-decoration:none;font-size:15px;font-weight:700}
+  .topbar .snd{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.1);color:#ecf0f1;border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer}
+  h1{text-align:center;font-size:26px;letter-spacing:2px;text-shadow:0 3px 14px rgba(0,0,0,.5)}
+  .sub{text-align:center;color:#b8c9d6;font-size:13px;margin:6px 0 12px;line-height:1.7}
+  .hud{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:10px}
+  .pill{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:6px 13px;font-size:14px;font-weight:700;white-space:nowrap}
+  .pill b{color:#ffeaa7}
+  .pill .heart{color:#ff7675}
+  .board-wrap{position:relative;width:min(92vw,480px);margin:0 auto;border-radius:16px;overflow:hidden;box-shadow:0 14px 34px rgba(0,0,0,.5);border:3px solid #6c5ce7;background:#1a1a2e}
+  canvas{display:block;width:100%;height:auto;touch-action:none}
+  .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(10,14,28,.82);text-align:center;padding:20px;z-index:5}
+  .overlay h2{font-size:26px}
+  .overlay p{font-size:14px;line-height:1.9;color:#dfe6e9}
+  .overlay .big{font-size:52px}
+  .btn{background:#0984e3;color:#fff;border:none;border-radius:999px;padding:13px 34px;font-size:17px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(9,132,227,.45)}
+  .btn:active{transform:scale(.96)}
+  .btn.ghost{background:rgba(255,255,255,.16);box-shadow:none}
+  .btnrow{display:flex;gap:10px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+  .btnrow .btn{padding:11px 22px;font-size:15px}
+  .dpad{display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(2,64px);gap:8px;justify-content:center;margin:16px auto 4px}
+  .dpad button{font-size:26px;border-radius:16px;border:2px solid rgba(255,255,255,.25);background:rgba(255,255,255,.14);color:#fff;cursor:pointer;touch-action:none;user-select:none}
+  .dpad button:active{background:rgba(255,255,255,.35)}
+  .dpad .up{grid-column:2;grid-row:1}
+  .dpad .left{grid-column:1;grid-row:2}
+  .dpad .down{grid-column:2;grid-row:2}
+  .dpad .right{grid-column:3;grid-row:2}
+  .tips{text-align:center;color:#8fa6b8;font-size:12.5px;line-height:1.9;margin-top:12px}
+  .hidden{display:none !important}
+  .flash{animation:flash .35s}
+  @keyframes flash{0%{box-shadow:0 0 0 4px rgba(255,118,117,.9)}100%{box-shadow:0 0 0 0 transparent}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a href="../">← 回主页</a>
+    <button class="snd" id="soundBtn" type="button">🔊 音效开</button>
+  </div>
+  <h1>🦊 迷宫探险</h1>
+  <p class="sub">带小狐狸穿过迷宫！先拿到 🔑 金钥匙才能打开 🚪 出口大门<br>吃 🪙 金币加分，小心巡逻的 👻 幽灵，别被它抓到</p>
+
+  <div class="hud">
+    <span class="pill">第 <b id="lvl">1</b> / 8 关</span>
+    <span class="pill">分数 <b id="score">0</b></span>
+    <span class="pill">❤️ <span class="heart" id="hearts">❤️❤️❤️</span></span>
+    <span class="pill">⏱ <b id="timer">90</b>s</span>
+    <span class="pill">🪙 <b id="coins">0/8</b></span>
+    <span class="pill">🔑 <b id="keyState">未拿到</b></span>
+  </div>
+
+  <div class="board-wrap" id="boardWrap">
+    <canvas id="cv" width="480" height="480"></canvas>
+    <div class="overlay" id="startOv">
+      <div class="big">🦊🗺️</div>
+      <h2>迷宫探险</h2>
+      <p>方向键 / WASD / 滑动 / 大方向键移动<br>按住方向键可以一直走，不用反复点<br>拿到钥匙 → 冲向出口，时间剩越多分越高</p>
+      <button class="btn" id="startBtn" type="button">开始探险</button>
+      <p style="font-size:12px;color:#aebfd0">最高分：<span id="bestStart">0</span></p>
+    </div>
+    <div class="overlay hidden" id="endOv">
+      <div class="big" id="endEmoji">🏆</div>
+      <h2 id="endTitle">通关！</h2>
+      <p id="endText"></p>
+      <button class="btn" id="againBtn" type="button">再玩一次</button>
+      <button class="btn ghost" id="backBtn" type="button">回主页</button>
+    </div>
+    <div class="overlay hidden" id="levelOv">
+      <div class="big">🎉</div>
+      <h2 id="levelTitle">第 1 关通过！</h2>
+      <p id="levelText"></p>
+      <button class="btn" id="nextBtn" type="button">下一关 →</button>
+    </div>
+    <div class="overlay hidden" id="pauseOv">
+      <div class="big">⏸️</div>
+      <h2>已暂停</h2>
+      <p>小狐狸在原地等你回来</p>
+      <button class="btn" id="resumeBtn" type="button">继续</button>
+    </div>
+  </div>
+
+  <div class="btnrow">
+    <button class="btn ghost" id="hintBtn" type="button">💡 提示 (<span id="hintN">3</span>)</button>
+    <button class="btn ghost" id="pauseBtn" type="button">⏸ 暂停</button>
+    <button class="btn ghost" id="restartBtn" type="button">🔄 重开本关</button>
+  </div>
+
+  <div class="dpad" id="dpad">
+    <button class="up" data-dir="up" type="button" aria-label="上">▲</button>
+    <button class="left" data-dir="left" type="button" aria-label="左">◀</button>
+    <button class="down" data-dir="down" type="button" aria-label="下">▼</button>
+    <button class="right" data-dir="right" type="button" aria-label="右">▶</button>
+  </div>
+
+  <p class="tips">💡 提示会指一下出口的方向（每关 3 次）<br>⌨️ 键盘方向键 / WASD · 📱 手指在棋盘上滑动 · 按住方向键连续走</p>
+</div>
+
+<script>
+(function(){
+'use strict';
+var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+var SIZE=480;
+var DIRS={up:[-1,0],down:[1,0],left:[0,-1],right:[0,1]};
+var KEYMAP={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right',W:'up',S:'down',A:'left',D:'right'};
+
+var state=null; // {level,size,grid,px,py,fx,fy,coins:Set,key:{r,c},hasKey,exit:{r,c},ghosts:[],score,hearts,timeLeft,hints,running,paused,over}
+var best=0;
+try{ best=parseInt(localStorage.getItem('mazeBest')||'0',10)||0; }catch(e){ best=0; }
+document.getElementById('bestStart').textContent=best;
+
+var soundOn=true, actx=null;
+function beep(f,d,type,vol){
+  if(!soundOn) return;
+  try{
+    if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)();
+    var o=actx.createOscillator(), g=actx.createGain();
+    o.type=type||'sine'; o.frequency.value=f;
+    g.gain.setValueAtTime(vol||0.12, actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime+(d||0.12));
+    o.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime+(d||0.12));
+  }catch(e){}
+}
+function sCoin(){ beep(880,.09,'sine',.12); setTimeout(function(){beep(1318,.12,'sine',.12);},70); }
+function sKey(){ [523,659,784,1046].forEach(function(f,i){ setTimeout(function(){beep(f,.12,'triangle',.12);},i*80); }); }
+function sHurt(){ beep(180,.25,'sawtooth',.14); }
+function sWin(){ [523,659,784,1046,1318].forEach(function(f,i){ setTimeout(function(){beep(f,.16,'triangle',.12);},i*110); }); }
+function sDoor(){ beep(392,.15,'triangle',.12); setTimeout(function(){beep(587,.2,'triangle',.12);},120); }
+
+// ---- maze generation: recursive backtracker, always solvable ----
+function genMaze(n){
+  var g=[], r, c;
+  for(r=0;r<n;r++){ g.push([]); for(c=0;c<n;c++) g[r].push(1); }
+  var stack=[[1,1]]; g[1][1]=0;
+  var seen={}; seen['1,1']=1;
+  while(stack.length){
+    var cur=stack[stack.length-1], cr=cur[0], cc=cur[1];
+    var opts=[];
+    [[-2,0],[2,0],[0,-2],[0,2]].forEach(function(d){
+      var nr=cr+d[0], nc=cc+d[1];
+      if(nr>0&&nr<n-1&&nc>0&&nc<n-1&&!seen[nr+','+nc]) opts.push([nr,nc,cr+d[0]/2,cc+d[1]/2]);
+    });
+    if(!opts.length){ stack.pop(); continue; }
+    var pick=opts[Math.floor(Math.random()*opts.length)];
+    g[pick[0]][pick[1]]=0; g[pick[2]][pick[3]]=0;
+    seen[pick[0]+','+pick[1]]=1; stack.push([pick[0],pick[1]]);
+  }
+  return g;
+}
+function bfsDist(g,n,sr,sc){
+  var dist=[], r, c;
+  for(r=0;r<n;r++){ dist.push([]); for(c=0;c<n;c++) dist[r].push(-1); }
+  var q=[[sr,sc]]; dist[sr][sc]=0;
+  while(q.length){
+    var cur=q.shift(), cr=cur[0], cc=cur[1];
+    [[-1,0],[1,0],[0,-1],[0,1]].forEach(function(d){
+      var nr=cr+d[0], nc=cc+d[1];
+      if(nr>=0&&nr<n&&nc>=0&&nc<n&&g[nr][nc]===0&&dist[nr][nc]===-1){
+        dist[nr][nc]=dist[cr][cc]+1; q.push([nr,nc]);
+      }
+    });
+  }
+  return dist;
+}
+function randFloor(g,n,dist,minD){
+  var cands=[];
+  for(var r=1;r<n-1;r++) for(var c=1;c<n-1;c++)
+    if(g[r][c]===0&&dist[r][c]>=minD) cands.push([r,c]);
+  if(!cands.length) return null;
+  return cands[Math.floor(Math.random()*cands.length)];
+}
+
+function newLevel(level){
+  var n=7+level*2; // L1=9 ... L8=23
+  var g=genMaze(n);
+  var dist=bfsDist(g,n,1,1);
+  var exit={r:n-2,c:n-2};
+  // key: among the farthest floor cells from start
+  var far=[]; var maxD=0;
+  for(var r=1;r<n-1;r++) for(var c=1;c<n-1;c++)
+    if(g[r][c]===0){ if(dist[r][c]>maxD) maxD=dist[r][c]; }
+  for(var r2=1;r2<n-1;r2++) for(var c2=1;c2<n-1;c2++)
+    if(g[r2][c2]===0&&dist[r2][c2]>=Math.floor(maxD*0.75)&&!(r2===exit.r&&c2===exit.c)) far.push([r2,c2]);
+  var kp=far[Math.floor(Math.random()*far.length)];
+  // coins
+  var coins={}, placed=0, guard=0;
+  while(placed<8&&guard++<500){
+    var cell=randFloor(g,n,dist,4);
+    if(!cell) break;
+    var k=cell[0]+','+cell[1];
+    if(coins[k]||(cell[0]===1&&cell[1]===1)||(cell[0]===exit.r&&cell[1]===exit.c)||(cell[0]===kp[0]&&cell[1]===kp[1])) continue;
+    coins[k]=1; placed++;
+  }
+  // ghosts: 1 at L1, +1 every 2 levels, cap 3
+  var nGhost=Math.min(3,1+Math.floor((level-1)/2));
+  var ghosts=[];
+  for(var i=0;i<nGhost;i++){
+    var gp=randFloor(g,n,dist,8);
+    if(gp) ghosts.push({r:gp[0],c:gp[1],fr:gp[0],fc:gp[1],t:0,last:null});
+  }
+  return {
+    level:level, size:n, grid:g, px:1, py:1, fx:1, fy:1,
+    coins:coins, coinTotal:placed, coinGot:0,
+    key:{r:kp[0],c:kp[1]}, hasKey:false, exit:exit, ghosts:ghosts,
+    score:state?state.score:0, hearts:state?state.hearts:3,
+    timeLeft:60+level*10, hints:3, running:true, paused:false, over:false,
+    heldDir:null, stepTimer:0, moveAnim:null, invUntil:0, hintUntil:0, hintDir:null,
+    ghostTick:0
+  };
+}
+
+function startGame(){
+  state=newLevel(1);
+  document.getElementById('startOv').classList.add('hidden');
+  document.getElementById('endOv').classList.add('hidden');
+  document.getElementById('levelOv').classList.add('hidden');
+  document.getElementById('pauseOv').classList.add('hidden');
+  updateHud();
+}
+function updateHud(){
+  if(!state) return;
+  document.getElementById('lvl').textContent=state.level;
+  document.getElementById('score').textContent=state.score;
+  document.getElementById('hearts').textContent='❤️'.repeat(Math.max(0,state.hearts));
+  document.getElementById('timer').textContent=state.timeLeft;
+  document.getElementById('coins').textContent=state.coinGot+'/'+state.coinTotal;
+  document.getElementById('keyState').textContent=state.hasKey?'已拿到 ✅':'未拿到';
+  document.getElementById('hintN').textContent=state.hints;
+}
+function canEnter(r,c){
+  return r>=0&&r<state.size&&c>=0&&c<state.size&&state.grid[r][c]===0;
+}
+function tryStep(dir){
+  if(!state||!state.running||state.paused||state.over||state.moveAnim) return;
+  var d=DIRS[dir], nr=state.px+d[0], nc=state.py+d[1];
+  if(!canEnter(nr,nc)) return;
+  state.moveAnim={fromR:state.px,fromC:state.py,toR:nr,toC:nc,t:0};
+  state.px=nr; state.py=nc;
+  checkCell();
+}
+function checkCell(){
+  var k=state.px+','+state.py;
+  if(state.coins[k]){
+    delete state.coins[k]; state.coinGot++; state.score+=50; sCoin(); updateHud();
+  }
+  if(!state.hasKey&&state.px===state.key.r&&state.py===state.key.c){
+    state.hasKey=true; state.score+=100; sKey(); updateHud();
+  }
+  if(state.px===state.exit.r&&state.py===state.exit.c){
+    if(state.hasKey){ sDoor(); levelClear(); }
+  }
+  checkGhostHit();
+}
+function checkGhostHit(){
+  if(!state) return;
+  var now=Date.now();
+  if(now<state.invUntil) return;
+  for(var i=0;i<state.ghosts.length;i++){
+    var gh=state.ghosts[i];
+    if(gh.r===state.px&&gh.c===state.py){
+      state.hearts--; sHurt();
+      var w=document.getElementById('boardWrap'); w.classList.remove('flash'); void w.offsetWidth; w.classList.add('flash');
+      if(state.hearts<=0){ gameOver(false); return; }
+      state.px=1; state.py=1; state.fx=1; state.fy=1; state.moveAnim=null;
+      state.invUntil=Date.now()+2000;
+      updateHud();
+      return;
+    }
+  }
+}
+function levelClear(){
+  state.running=false;
+  var bonus=state.timeLeft*10;
+  state.score+=bonus; updateHud();
+  if(state.score>best){ best=state.score; try{localStorage.setItem('mazeBest',String(best));}catch(e){} }
+  sWin();
+  if(state.level>=8){
+    gameOver(true); return;
+  }
+  document.getElementById('levelTitle').textContent='第 '+state.level+' 关通过！';
+  document.getElementById('levelText').innerHTML='时间奖励 +'+bonus+' 分<br>当前总分 <b>'+state.score+'</b> · 最高分 '+best+'<br>下一关迷宫更大、幽灵更多，小心！';
+  document.getElementById('levelOv').classList.remove('hidden');
+}
+function nextLevel(){
+  var sc=state.score, h=state.hearts;
+  state=newLevel(state.level+1);
+  state.score=sc; state.hearts=h;
+  document.getElementById('levelOv').classList.add('hidden');
+  updateHud();
+}
+function gameOver(won){
+  state.running=false; state.over=true;
+  if(state.score>best){ best=state.score; try{localStorage.setItem('mazeBest',String(best));}catch(e){} }
+  document.getElementById('endEmoji').textContent=won?'🏆':'😿';
+  document.getElementById('endTitle').textContent=won?'全部通关！':'探险结束';
+  document.getElementById('endText').innerHTML=won
+    ? '你穿过了全部 8 座迷宫，真正的探险家！<br>总分 <b>'+state.score+'</b> · 最高分 '+best
+    : '小狐狸没能走出迷宫……<br>到达第 '+state.level+' 关 · 总分 <b>'+state.score+'</b> · 最高分 '+best;
+  document.getElementById('endOv').classList.remove('hidden');
+}
+function restartLevel(){
+  if(!state) return;
+  var sc=state.score, h=state.hearts, lv=state.level;
+  state=newLevel(lv);
+  state.score=sc; state.hearts=h;
+  ['endOv','levelOv','pauseOv'].forEach(function(id){document.getElementById(id).classList.add('hidden');});
+  updateHud();
+}
+function togglePause(){
+  if(!state||!state.running||state.over) return;
+  state.paused=!state.paused;
+  document.getElementById('pauseOv').classList.toggle('hidden',!state.paused);
+  document.getElementById('pauseBtn').textContent=state.paused?'▶ 继续':'⏸ 暂停';
+}
+function useHint(){
+  if(!state||!state.running||state.paused||state.over||state.hints<=0) return;
+  var dist=bfsDist(state.grid,state.size,state.exit.r,state.exit.c);
+  var bestD=null, bestV=1e9;
+  for(var key in DIRS){
+    var d=DIRS[key], nr=state.px+d[0], nc=state.py+d[1];
+    if(canEnter(nr,nc)&&dist[nr][nc]>=0&&dist[nr][nc]<bestV){ bestV=dist[nr][nc]; bestD=key; }
+  }
+  if(!bestD) return;
+  state.hints--; state.hintDir=bestD; state.hintUntil=Date.now()+3000;
+  beep(660,.12,'sine',.1);
+  updateHud();
+}
+
+// ---- main loop ----
+var lastTs=0, acc=0;
+function loop(ts){
+  requestAnimationFrame(loop);
+  if(!state||!state.running||state.paused||state.over){ render(); return; }
+  var dt=ts-lastTs; lastTs=ts;
+  if(dt>250) dt=250;
+  acc+=dt;
+  // movement: held direction steps every 150ms
+  if(state.moveAnim){
+    state.moveAnim.t+=dt;
+    if(state.moveAnim.t>=140){
+      state.fx=state.moveAnim.toR; state.fy=state.moveAnim.toC; state.moveAnim=null;
+      checkGhostHit();
+    }
+  }else if(state.heldDir){
+    state.stepTimer+=dt;
+    if(state.stepTimer>=150){ state.stepTimer=0; tryStep(state.heldDir); }
+  }
+  // ghosts step every 550ms (faster in later levels)
+  state.ghostTick+=dt;
+  var ghostInterval=Math.max(380,620-state.level*25);
+  if(state.ghostTick>=ghostInterval){
+    state.ghostTick=0;
+    state.ghosts.forEach(function(gh){
+      var opts=[];
+      for(var key in DIRS){
+        var d=DIRS[key], nr=gh.r+d[0], nc=gh.c+d[1];
+        if(canEnter(nr,nc)) opts.push([nr,nc,key]);
+      }
+      if(!opts.length) return;
+      var noBack=opts.filter(function(o){ return !(gh.last&&o[2]===opp(gh.last)); });
+      var pick=(noBack.length&&Math.random()<0.7?noBack:opts)[Math.floor(Math.random()*(noBack.length&&Math.random()<0.7?noBack.length:opts.length))];
+      gh.last=pick[2]; gh.r=pick[0]; gh.c=pick[1];
+    });
+    checkGhostHit();
+  }
+  // timer: 1s per 1000ms accumulated
+  if(acc>=1000){
+    var secs=Math.floor(acc/1000); acc-=secs*1000;
+    state.timeLeft-=secs;
+    if(state.timeLeft<=0){
+      state.timeLeft=0; updateHud();
+      state.hearts--; sHurt();
+      if(state.hearts<=0){ gameOver(false); }
+      else { state.px=1; state.py=1; state.fx=1; state.fy=1; state.moveAnim=null; state.timeLeft=60+state.level*10; updateHud(); }
+    }else updateHud();
+  }
+  render();
+}
+function opp(dir){ return {up:'down',down:'up',left:'right',right:'left'}[dir]; }
+
+// ---- rendering ----
+function render(){
+  ctx.clearRect(0,0,SIZE,SIZE);
+  if(!state){
+    // attract mode: draw a demo maze
+    var demo=genMaze(11);
+    drawMaze(demo,11);
+    return;
+  }
+  drawMaze(state.grid,state.size);
+  var n=state.size, cell=SIZE/n;
+  // exit door
+  var ex=state.exit;
+  ctx.font=Math.floor(cell*0.72)+'px serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(state.hasKey?'🚪':'🔒', (ex.c+0.5)*cell, (ex.r+0.5)*cell);
+  // key
+  if(!state.hasKey){
+    var pulse=1+0.12*Math.sin(Date.now()/250);
+    ctx.font=Math.floor(cell*0.6*pulse)+'px serif';
+    ctx.fillText('🔑',(state.key.c+0.5)*cell,(state.key.r+0.5)*cell);
+  }
+  // coins
+  ctx.font=Math.floor(cell*0.55)+'px serif';
+  for(var k in state.coins){
+    var parts=k.split(','); var cr=+parts[0], cc=+parts[1];
+    ctx.fillText('🪙',(cc+0.5)*cell,(cr+0.5)*cell);
+  }
+  // ghosts
+  ctx.font=Math.floor(cell*0.72)+'px serif';
+  state.ghosts.forEach(function(gh){
+    ctx.fillText('👻',(gh.c+0.5)*cell,(gh.r+0.5)*cell);
+  });
+  // player (smooth between cells)
+  var pr=state.fx, pc=state.fy;
+  if(state.moveAnim){
+    var a=state.moveAnim, t=Math.min(1,a.t/140);
+    pr=a.fromR+(a.toR-a.fromR)*t; pc=a.fromC+(a.toC-a.fromC)*t;
+  }
+  var blink=Date.now()<state.invUntil&&(Math.floor(Date.now()/150)%2===0);
+  if(!blink){
+    ctx.font=Math.floor(cell*0.78)+'px serif';
+    ctx.fillText('🦊',(pc+0.5)*cell,(pr+0.5)*cell);
+  }
+  // hint arrow
+  if(state.hintDir&&Date.now()<state.hintUntil){
+    var arrow={up:'⬆️',down:'⬇️',left:'⬅️',right:'➡️'}[state.hintDir];
+    ctx.font=Math.floor(cell*0.6)+'px serif';
+    ctx.fillText(arrow,(pc+0.5)*cell,(pr-0.7)*cell);
+  }
+}
+function drawMaze(g,n){
+  var cell=SIZE/n;
+  for(var r=0;r<n;r++) for(var c=0;c<n;c++){
+    var x=c*cell, y=r*cell;
+    if(g[r][c]===1){
+      var grad=ctx.createLinearGradient(x,y,x,y+cell);
+      grad.addColorStop(0,'#5b4a8a'); grad.addColorStop(1,'#3d2f63');
+      ctx.fillStyle=grad; ctx.fillRect(x,y,cell,cell);
+      ctx.fillStyle='rgba(255,255,255,.08)';
+      ctx.fillRect(x,y,cell,Math.max(1,cell*0.12));
+    }else{
+      ctx.fillStyle=((r+c)%2===0)?'#2b2d42':'#272940';
+      ctx.fillRect(x,y,cell,cell);
+    }
+  }
+  // start marker
+  ctx.font=Math.floor(cell*0.5)+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('🏠',cell*1.5,cell*1.5);
+}
+
+// ---- input ----
+document.addEventListener('keydown',function(e){
+  var dir=KEYMAP[e.key];
+  if(dir){
+    e.preventDefault();
+    if(state&&state.running&&!state.paused&&!state.over){
+      if(!state.heldDir){ state.stepTimer=0; tryStep(dir); }
+      state.heldDir=dir;
+    }
+  }
+  if(e.key===' '||e.key==='Enter'){
+    if(state&&state.over){ startGame(); }
+  }
+});
+document.addEventListener('keyup',function(e){
+  var dir=KEYMAP[e.key];
+  if(dir&&state&&state.heldDir===dir) state.heldDir=null;
+});
+var touchStart=null;
+cv.addEventListener('touchstart',function(e){ e.preventDefault(); var t=e.touches[0]; touchStart={x:t.clientX,y:t.clientY}; },{passive:false});
+cv.addEventListener('touchmove',function(e){
+  e.preventDefault();
+  if(!touchStart||!state||!state.running||state.paused||state.over) return;
+  var t=e.touches[0], dx=t.clientX-touchStart.x, dy=t.clientY-touchStart.y;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<24) return;
+  var dir=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');
+  touchStart={x:t.clientX,y:t.clientY};
+  tryStep(dir);
+},{passive:false});
+cv.addEventListener('touchend',function(){ touchStart=null; });
+document.querySelectorAll('#dpad button').forEach(function(b){
+  var dir=b.getAttribute('data-dir');
+  function press(e){ e.preventDefault(); if(state&&state.running&&!state.paused&&!state.over){ if(!state.heldDir){ state.stepTimer=0; tryStep(dir);} state.heldDir=dir; } }
+  function release(e){ e.preventDefault(); if(state&&state.heldDir===dir) state.heldDir=null; }
+  b.addEventListener('pointerdown',press);
+  b.addEventListener('pointerup',release);
+  b.addEventListener('pointerleave',release);
+  b.addEventListener('pointercancel',release);
+});
+document.getElementById('startBtn').addEventListener('click',function(){ beep(523,.1,'triangle',.1); startGame(); });
+document.getElementById('againBtn').addEventListener('click',function(){ startGame(); });
+document.getElementById('backBtn').addEventListener('click',function(){ window.location.href='../'; });
+document.getElementById('nextBtn').addEventListener('click',function(){ nextLevel(); });
+document.getElementById('resumeBtn').addEventListener('click',function(){ togglePause(); });
+document.getElementById('pauseBtn').addEventListener('click',function(){ togglePause(); });
+document.getElementById('restartBtn').addEventListener('click',function(){ restartLevel(); });
+document.getElementById('hintBtn').addEventListener('click',function(){ useHint(); });
+document.getElementById('soundBtn').addEventListener('click',function(){
+  soundOn=!soundOn;
+  document.getElementById('soundBtn').textContent=soundOn?'🔊 音效开':'🔇 音效关';
+});
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden&&state&&state.running&&!state.paused&&!state.over) togglePause();
+});
+
+requestAnimationFrame(loop);
+
+// test hooks (harmless in production)
+window.__mazeTest={genMaze:genMaze,bfsDist:bfsDist,getState:function(){return state;},startGame:startGame,tryStep:tryStep,newLevel:newLevel};
+})();
+</script>
+</body>
+</html>
