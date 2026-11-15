@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>霓虹弹珠台 · 游戏小站</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(160deg,#141e30,#243b55 60%,#2c5364);min-height:100vh;color:#ecf0f1;padding:12px 10px 28px}
+  .wrap{max-width:520px;margin:0 auto}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+  .topbar a{color:#74b9ff;text-decoration:none;font-size:15px;font-weight:700}
+  .topbar h1{font-size:20px;letter-spacing:1px;text-shadow:0 2px 10px rgba(0,0,0,.4)}
+  .topbar .spacer{width:64px}
+  .hud{display:flex;gap:8px;margin-bottom:10px}
+  .hud .box{flex:1;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:8px 6px;text-align:center}
+  .hud .box .k{font-size:11px;color:#aebfd0}
+  .hud .box .v{font-size:20px;font-weight:800;line-height:1.3}
+  .hud .box .v small{font-size:13px;color:#fdcb6e}
+  .board{position:relative;border-radius:18px;overflow:hidden;box-shadow:0 14px 34px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.14)}
+  canvas{display:block;width:100%;height:auto;touch-action:none;user-select:none;-webkit-user-select:none}
+  .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:rgba(10,14,28,.82);backdrop-filter:blur(3px);padding:20px;z-index:5}
+  .overlay.hidden{display:none}
+  .overlay .big{font-size:56px}
+  .overlay h2{font-size:26px;margin:10px 0 8px;letter-spacing:2px}
+  .overlay p{font-size:14px;line-height:1.9;color:#dfe6e9;max-width:340px}
+  .overlay .score{font-size:18px;font-weight:800;color:#fdcb6e;margin:8px 0}
+  .btn{display:inline-block;margin-top:14px;background:linear-gradient(135deg,#e84393,#6c5ce7);color:#fff;border:none;border-radius:999px;padding:13px 34px;font-size:17px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(108,92,231,.55)}
+  .btn:active{transform:scale(.96)}
+  .btn.ghost{background:rgba(255,255,255,.16);box-shadow:none}
+  .controls{display:flex;gap:10px;margin-top:12px}
+  .ctl{flex:1;border:none;border-radius:14px;padding:16px 6px;font-size:17px;font-weight:800;color:#fff;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
+  .ctl:active{transform:scale(.96)}
+  .ctl.left{background:linear-gradient(135deg,#00b894,#00cec9)}
+  .ctl.right{background:linear-gradient(135deg,#e17055,#fdcb6e)}
+  .ctl.launch{background:linear-gradient(135deg,#e84393,#6c5ce7)}
+  .ctl.launch:disabled{opacity:.45}
+  .hint{margin-top:12px;text-align:center;font-size:12.5px;color:#aebfd0;line-height:1.9}
+  .rowbtns{display:flex;gap:8px;margin-top:10px;justify-content:center}
+  .mini{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#ecf0f1;border-radius:999px;padding:7px 16px;font-size:13px;cursor:pointer}
+  .toast{position:absolute;left:50%;top:34%;transform:translateX(-50%);background:rgba(0,0,0,.72);color:#ffeaa7;font-weight:800;font-size:17px;padding:9px 20px;border-radius:999px;z-index:6;pointer-events:none;opacity:0;transition:opacity .25s;white-space:nowrap}
+  .toast.show{opacity:1}
+  .power{position:absolute;right:8px;top:8px;width:14px;height:150px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);border-radius:999px;overflow:hidden;z-index:4;display:none}
+  .power.show{display:block}
+  .power i{display:block;position:absolute;left:0;right:0;bottom:0;height:0%;background:linear-gradient(180deg,#ff7675,#fdcb6e,#00b894)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a href="../">← 回主页</a>
+    <h1>🕹️ 霓虹弹珠台</h1>
+    <div class="spacer"></div>
+  </div>
+
+  <div class="hud">
+    <div class="box"><div class="k">分数</div><div class="v" id="hudScore">0</div></div>
+    <div class="box"><div class="k">倍率</div><div class="v" id="hudMult">×1</div></div>
+    <div class="box"><div class="k">剩余弹珠</div><div class="v" id="hudBalls">●●●</div></div>
+    <div class="box"><div class="k">最高分</div><div class="v" id="hudBest">0</div></div>
+  </div>
+
+  <div class="board" id="board">
+    <canvas id="cv" width="420" height="700"></canvas>
+    <div class="power" id="powerBar"><i id="powerFill"></i></div>
+    <div class="toast" id="toast"></div>
+    <div class="overlay" id="startOverlay">
+      <div class="big">🕹️</div>
+      <h2>霓虹弹珠台</h2>
+      <p>按住<b>发射</b>蓄力、松手把弹珠打上台面；<br>左右挡板把弹珠救回来，别让它掉进底洞！<br>撞保险杠 +100，点亮 3 盏星灯升倍率，<br>打掉 3 个靶子 +1000，每颗弹珠有 8 秒救球保护。<br>3 颗弹珠用完，游戏结束。</p>
+      <button class="btn" id="startBtn">开始游戏</button>
+      <p style="margin-top:10px;font-size:12px;color:#aebfd0">键盘：← / Z 左挡板 · → / M 右挡板 · 空格按住蓄力发射 · P 暂停</p>
+    </div>
+    <div class="overlay hidden" id="overOverlay">
+      <div class="big">🏆</div>
+      <h2>游戏结束</h2>
+      <div class="score" id="finalScore">得分 0</div>
+      <p id="bestLine"></p>
+      <button class="btn" id="againBtn">再来一局</button>
+      <button class="btn ghost" id="homeBtn">回主页</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="ctl left" id="btnLeft">◀ 左挡板</button>
+    <button class="ctl launch" id="btnLaunch">🚀 发射</button>
+    <button class="ctl right" id="btnRight">右挡板 ▶</button>
+  </div>
+
+  <div class="rowbtns">
+    <button class="mini" id="pauseBtn">⏸ 暂停</button>
+    <button class="mini" id="soundBtn">🔊 音效：开</button>
+  </div>
+
+  <p class="hint">也可以直接点台面左/右半边控制挡板 · 弹珠进发射槽后按住「发射」蓄力、松手弹出<br>目标：刷出你的最高分！</p>
+</div>
+
+<script>
+'use strict';
+/* 霓虹弹珠台：原生 Canvas 物理弹珠台，零外部依赖 */
+var cv = document.getElementById('cv');
+var ctx = cv.getContext('2d');
+var W = 420, H = 700;
+var GRAV = 0.32, STEP = 1000 / 60;
+var BALL_R = 9;
+
+/* ---------- 音效 ---------- */
+var audioCtx = null, soundOn = true;
+function beep(freq, dur, type, vol, slideTo) {
+  if (!soundOn) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = type || 'square';
+    o.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, audioCtx.currentTime + dur);
+    g.gain.setValueAtTime(vol || 0.08, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + dur);
+  } catch (e) { /* 无音频环境时静默 */ }
+}
+function sfx(name) {
+  if (name === 'bumper') beep(880, 0.09, 'square', 0.09);
+  else if (name === 'sling') beep(660, 0.07, 'square', 0.07);
+  else if (name === 'target') beep(520, 0.12, 'triangle', 0.1);
+  else if (name === 'rollover') beep(1040, 0.1, 'sine', 0.09);
+  else if (name === 'flip') beep(220, 0.05, 'square', 0.05);
+  else if (name === 'launch') beep(300, 0.25, 'sawtooth', 0.07, 900);
+  else if (name === 'drain') beep(400, 0.5, 'sawtooth', 0.08, 90);
+  else if (name === 'save') { beep(660, 0.12, 'sine', 0.1); setTimeout(function(){ beep(990, 0.18, 'sine', 0.1); }, 110); }
+  else if (name === 'bonus') { beep(784, 0.1, 'sine', 0.1); setTimeout(function(){ beep(1046, 0.16, 'sine', 0.1); }, 100); }
+  else if (name === 'over') { [523, 392, 330, 262].forEach(function(f, i){ setTimeout(function(){ beep(f, 0.22, 'triangle', 0.09); }, i * 170); }); }
+}
+
+/* ---------- 台面几何 ---------- */
+var ARCH = { x: 210, y: 210, r: 194 };          // 顶部圆弧
+var WALL_L = 16, WALL_R = 404;                  // 左右外墙
+var DIVIDER = { x: 372, y0: 250, y1: 600 };     // 发射槽隔板
+var GUIDES = [                                  // 底部斜导轨（线段，带弹性）
+  { x1: 16,  y1: 620, x2: 96,  y2: 668 },        // 左下
+  { x1: 404, y1: 620, x2: 344, y2: 672 },        // 右下（发射槽底）
+  { x1: 372, y1: 600, x2: 332, y2: 668 }         // 发射槽底斜面
+];
+var BUMPERS = [
+  { x: 150, y: 180, r: 24, flash: 0, color: '#ff7675' },
+  { x: 270, y: 180, r: 24, flash: 0, color: '#74b9ff' },
+  { x: 210, y: 115, r: 24, flash: 0, color: '#fdcb6e' }
+];
+var SLINGS = [                                  // 弹弓（线段，撞上弹开）
+  { x1: 70, y1: 520, x2: 118, y2: 560, flash: 0 },
+  { x1: 350, y1: 520, x2: 302, y2: 560, flash: 0 }
+];
+var ROLLOVERS = [
+  { x: 105, y: 300, r: 13, lit: false, armed: true },
+  { x: 210, y: 275, r: 13, lit: false, armed: true },
+  { x: 315, y: 300, r: 13, lit: false, armed: true }
+];
+var TARGETS = [                                 // 左墙立靶
+  { x: 26, y: 370, w: 10, h: 28, down: false, flash: 0 },
+  { x: 26, y: 410, w: 10, h: 28, down: false, flash: 0 },
+  { x: 26, y: 450, w: 10, h: 28, down: false, flash: 0 }
+];
+var FLIP = { len: 58, rad: 9 };
+var flipL = { px: 138, py: 640, rest: 150 * Math.PI / 180, active: 210 * Math.PI / 180, a: 150 * Math.PI / 180, on: false, va: 0 };
+var flipR = { px: 282, py: 640, rest: 30 * Math.PI / 180, active: -30 * Math.PI / 180, a: 30 * Math.PI / 180, on: false, va: 0 };
+
+/* ---------- 游戏状态 ---------- */
+var BEST_KEY = 'neon-pinball-best';
+var best = 0;
+try { best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0; } catch (e) { best = 0; }
+var G = {
+  state: 'menu',      // menu | ready | playing | over
+  paused: false,
+  score: 0, mult: 1, balls: 3,
+  ball: { x: 388, y: 640, vx: 0, vy: 0 },
+  trail: [],
+  launchPower: 0, charging: false, chargeDir: 1,
+  launchAt: 0, savedUsed: false,
+  flashMsg: 0
+};
+var nowMs = 0;
+
+function $(id) { return document.getElementById(id); }
+function hud() {
+  $('hudScore').textContent = G.score;
+  $('hudMult').innerHTML = '×' + G.mult;
+  $('hudBalls').textContent = '●'.repeat(Math.max(0, G.balls)) + '○'.repeat(Math.max(0, 3 - G.balls));
+  $('hudBest').textContent = best;
+}
+function toast(msg) {
+  var t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(function(){ t.classList.remove('show'); }, 1400);
+}
+function addScore(n) { G.score += n * G.mult; hud(); }
+
+/* ---------- 物理辅助 ---------- */
+function segClosest(px, py, x1, y1, x2, y2) {
+  var dx = x2 - x1, dy = y2 - y1;
+  var len2 = dx * dx + dy * dy;
+  var t = len2 ? ((px - x1) * dx + (py - y1) * dy) / len2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return { x: x1 + dx * t, y: y1 + dy * t, t: t };
+}
+function bounceCircle(nx, ny, rest) {
+  // 沿单位法线 (nx,ny) 反弹，rest 为恢复系数
+  var b = G.ball, vn = b.vx * nx + b.vy * ny;
+  if (vn < 0) {
+    b.vx -= (1 + rest) * vn * nx;
+    b.vy -= (1 + rest) * vn * ny;
+  }
+}
+function collideSegment(x1, y1, x2, y2, rest, kick) {
+  var b = G.ball;
+  var c = segClosest(b.x, b.y, x1, y1, x2, y2);
+  var dx = b.x - c.x, dy = b.y - c.y;
+  var d = Math.sqrt(dx * dx + dy * dy);
+  var minD = BALL_R + 3;
+  if (d < minD && d > 0.001) {
+    var nx = dx / d, ny = dy / d;
+    b.x = c.x + nx * minD; b.y = c.y + ny * minD;
+    bounceCircle(nx, ny, rest);
+    if (kick) { b.vx += nx * kick; b.vy += ny * kick; }
+    return true;
+  }
+  return false;
+}
+function collideCircle(cx, cy, r, rest, kick) {
+  var b = G.ball;
+  var dx = b.x - cx, dy = b.y - cy;
+  var d = Math.sqrt(dx * dx + dy * dy);
+  var minD = BALL_R + r;
+  if (d < minD && d > 0.001) {
+    var nx = dx / d, ny = dy / d;
+    b.x = cx + nx * minD; b.y = cy + ny * minD;
+    bounceCircle(nx, ny, rest);
+    if (kick) { b.vx += nx * kick; b.vy += ny * kick; }
+    return true;
+  }
+  return false;
+}
+function flipTip(f) {
+  return { x: f.px + FLIP.len * Math.cos(f.a), y: f.py + FLIP.len * Math.sin(f.a) };
+}
+function collideFlipper(f) {
+  var b = G.ball, tip = flipTip(f);
+  var c = segClosest(b.x, b.y, f.px, f.py, tip.x, tip.y);
+  var dx = b.x - c.x, dy = b.y - c.y;
+  var d = Math.sqrt(dx * dx + dy * dy);
+  var minD = BALL_R + FLIP.rad;
+  if (d < minD && d > 0.001) {
+    var nx = dx / d, ny = dy / d;
+    b.x = c.x + nx * minD; b.y = c.y + ny * minD;
+    // 接触点线速度（挡板旋转带动）
+    var rx = c.x - f.px, ry = c.y - f.py;
+    var cvx = -f.va * ry, cvy = f.va * rx;
+    var rvx = b.vx - cvx, rvy = b.vy - cvy;
+    var vn = rvx * nx + rvy * ny;
+    if (vn < 0) {
+      var rest = 0.35;
+      rvx -= (1 + rest) * vn * nx;
+      rvy -= (1 + rest) * vn * ny;
+      b.vx = cvx + rvx; b.vy = cvy + rvy;
+    }
+    return true;
+  }
+  return false;
+}
+
+/* ---------- 一步物理 ---------- */
+function physics() {
+  var b = G.ball;
+  // 挡板角度推进
+  [flipL, flipR].forEach(function(f) {
+    var target = f.on ? f.active : f.rest;
+    var speed = 0.30; // 每步约 17°，约 60ms 挥满
+    var prev = f.a;
+    if (Math.abs(target - f.a) <= speed) f.a = target;
+    else f.a += (target > f.a ? speed : -speed);
+    f.va = f.a - prev; // 每步角速度（弧度/步）
+  });
+
+  if (G.state !== 'playing') return;
+
+  // 弹珠运动（2 子步更稳）
+  for (var s = 0; s < 2; s++) {
+    b.vy += GRAV / 2;
+    b.x += b.vx / 2; b.y += b.vy / 2;
+    // 顶部圆弧
+    var dx = b.x - ARCH.x, dy = b.y - ARCH.y;
+    var d = Math.sqrt(dx * dx + dy * dy);
+    if (b.y < ARCH.y && d > ARCH.r - BALL_R && d > 0.001) {
+      var nx = dx / d, ny = dy / d;
+      b.x = ARCH.x + nx * (ARCH.r - BALL_R);
+      b.y = ARCH.y + ny * (ARCH.r - BALL_R);
+      bounceCircle(-nx, -ny, 0.55);
+    }
+    // 左右外墙
+    if (b.x < WALL_L + BALL_R) { b.x = WALL_L + BALL_R; if (b.vx < 0) b.vx = -b.vx * 0.55; }
+    if (b.x > WALL_R - BALL_R) { b.x = WALL_R - BALL_R; if (b.vx > 0) b.vx = -b.vx * 0.55; }
+    // 发射槽隔板
+    collideSegment(DIVIDER.x, DIVIDER.y0, DIVIDER.x, DIVIDER.y1, 0.55, 0);
+    // 底部斜导轨
+    GUIDES.forEach(function(g) { collideSegment(g.x1, g.y1, g.x2, g.y2, 0.45, 0); });
+    // 挡板
+    collideFlipper(flipL); collideFlipper(flipR);
+    // 保险杠
+    BUMPERS.forEach(function(bp) {
+      if (collideCircle(bp.x, bp.y, bp.r, 1.15, 5.5)) {
+        bp.flash = 12; addScore(100); sfx('bumper');
+        var sp = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+        if (sp < 9) { var k = 9 / Math.max(sp, 0.1); b.vx *= k; b.vy *= k; }
+      }
+    });
+    // 弹弓
+    SLINGS.forEach(function(sg) {
+      if (collideSegment(sg.x1, sg.y1, sg.x2, sg.y2, 0.9, 5)) {
+        sg.flash = 10; addScore(50); sfx('sling');
+      }
+    });
+    // 速度上限
+    var sp2 = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+    if (sp2 > 22) { b.vx *= 22 / sp2; b.vy *= 22 / sp2; }
+  }
+
+  // 轨迹
+  G.trail.push({ x: b.x, y: b.y });
+  if (G.trail.length > 14) G.trail.shift();
+  BUMPERS.forEach(function(bp) { if (bp.flash > 0) bp.flash--; });
+  SLINGS.forEach(function(sg) { if (sg.flash > 0) sg.flash--; });
+  TARGETS.forEach(function(t) { if (t.flash > 0) t.flash--; });
+
+  // 星灯（滚过点亮）
+  ROLLOVERS.forEach(function(r) {
+    var dd = Math.sqrt((b.x - r.x) * (b.x - r.x) + (b.y - r.y) * (b.y - r.y));
+    if (dd < r.r + BALL_R) {
+      if (r.armed && !r.lit) {
+        r.lit = true; r.armed = false; addScore(150); sfx('rollover');
+        if (ROLLOVERS.every(function(q) { return q.lit; })) {
+          G.mult = Math.min(5, G.mult + 1);
+          addScore(500);
+          ROLLOVERS.forEach(function(q) { q.lit = false; q.armed = true; });
+          toast('倍率提升到 ×' + G.mult + '！');
+          sfx('bonus');
+        }
+      }
+    } else if (dd > r.r + BALL_R + 14) { r.armed = true; }
+  });
+
+  // 立靶（矩形碰撞）
+  TARGETS.forEach(function(t) {
+    if (t.down) return;
+    var cx = Math.max(t.x, Math.min(b.x, t.x + t.w));
+    var cy = Math.max(t.y, Math.min(b.y, t.y + t.h));
+    var dx = b.x - cx, dy = b.y - cy;
+    var d = Math.sqrt(dx * dx + dy * dy);
+    if (d < BALL_R) {
+      t.down = true; t.flash = 12; addScore(200); sfx('target');
+      if (dx * dx + dy * dy > 0.01) { b.vx += (dx / d) * 3; b.vy += (dy / d) * 3; }
+      else b.vx -= 3;
+      if (TARGETS.every(function(q) { return q.down; })) {
+        addScore(1000);
+        TARGETS.forEach(function(q) { q.down = false; });
+        toast('三靶全中！+1000');
+        sfx('bonus');
+      }
+    }
+  });
+
+  // 掉洞
+  if (b.y - BALL_R > H + 6) drainBall();
+}
+
+function drainBall() {
+  sfx('drain');
+  if (!G.savedUsed && nowMs - G.launchAt < 8000) {
+    G.savedUsed = true;
+    toast('🛟 救球成功！弹珠回来了');
+    sfx('save');
+    serveBall();
+    return;
+  }
+  G.balls--;
+  G.mult = 1;
+  hud();
+  if (G.balls <= 0) { gameOver(); return; }
+  serveBall();
+}
+function serveBall() {
+  G.ball.x = 388; G.ball.y = 600; G.ball.vx = 0; G.ball.vy = 0;
+  G.trail = [];
+  G.launchPower = 0; G.charging = false; G.savedUsed = false;
+  G.state = 'ready';
+  $('powerBar').classList.remove('show');
+  $('btnLaunch').disabled = false;
+  toast(G.balls > 0 ? '第 ' + (4 - G.balls) + ' 颗弹珠 · 按住发射' : '');
+}
+function launchBall() {
+  if (G.state !== 'ready') return;
+  var p = Math.max(0.15, G.launchPower);
+  G.ball.vy = -(9 + p * 11);
+  G.ball.vx = 0;
+  G.state = 'playing';
+  G.launchAt = nowMs;
+  G.charging = false;
+  $('powerBar').classList.remove('show');
+  $('btnLaunch').disabled = true;
+  sfx('launch');
+}
+function startGame() {
+  G.score = 0; G.mult = 1; G.balls = 3;
+  BUMPERS.forEach(function(bp) { bp.flash = 0; });
+  ROLLOVERS.forEach(function(r) { r.lit = false; r.armed = true; });
+  TARGETS.forEach(function(t) { t.down = false; });
+  $('startOverlay').classList.add('hidden');
+  $('overOverlay').classList.add('hidden');
+  hud();
+  serveBall();
+}
+function gameOver() {
+  G.state = 'over';
+  var isBest = G.score > best;
+  if (isBest) {
+    best = G.score;
+    try { localStorage.setItem(BEST_KEY, String(best)); } catch (e) {}
+  }
+  hud();
+  $('finalScore').textContent = '得分 ' + G.score + (isBest ? ' 🎉 新纪录！' : '');
+  $('bestLine').textContent = '最高分：' + best;
+  $('overOverlay').classList.remove('hidden');
+  sfx('over');
+}
+
+/* ---------- 渲染 ---------- */
+function drawTable() {
+  // 背景
+  var bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#1b1035'); bg.addColorStop(0.55, '#241b4d'); bg.addColorStop(1, '#120a24');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  // 星空
+  ctx.save();
+  for (var i = 0; i < 70; i++) {
+    var sx = (i * 67.3) % W, sy = (i * 41.7) % H;
+    ctx.globalAlpha = 0.25 + ((i * 13) % 10) / 28;
+    ctx.fillStyle = i % 3 ? '#a29bfe' : '#ffeaa7';
+    ctx.fillRect(sx, sy, 2, 2);
+  }
+  ctx.restore();
+  // 霓虹边框
+  ctx.save();
+  ctx.strokeStyle = '#00cec9'; ctx.lineWidth = 5;
+  ctx.shadowColor = '#00cec9'; ctx.shadowBlur = 18;
+  ctx.beginPath();
+  ctx.arc(ARCH.x, ARCH.y, ARCH.r, Math.PI, 0);
+  ctx.moveTo(WALL_L, ARCH.y); ctx.lineTo(WALL_L, 620);
+  ctx.moveTo(WALL_R, ARCH.y); ctx.lineTo(WALL_R, 620);
+  ctx.stroke();
+  ctx.restore();
+  // 发射槽隔板
+  ctx.save();
+  ctx.strokeStyle = '#6c5ce7'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+  ctx.shadowColor = '#6c5ce7'; ctx.shadowBlur = 10;
+  ctx.beginPath(); ctx.moveTo(DIVIDER.x, DIVIDER.y0); ctx.lineTo(DIVIDER.x, DIVIDER.y1); ctx.stroke();
+  ctx.restore();
+  // 底部导轨
+  ctx.save();
+  ctx.strokeStyle = '#636e72'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+  GUIDES.forEach(function(g) {
+    ctx.beginPath(); ctx.moveTo(g.x1, g.y1); ctx.lineTo(g.x2, g.y2); ctx.stroke();
+  });
+  ctx.restore();
+  // 台面字
+  ctx.save();
+  ctx.globalAlpha = 0.16;
+  ctx.fillStyle = '#fff';
+  ctx.font = '800 30px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('NEON', 210, 420);
+  ctx.font = '800 15px sans-serif';
+  ctx.fillText('P I N B A L L', 210, 446);
+  ctx.restore();
+  // 星灯
+  ROLLOVERS.forEach(function(r, i) {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
+    if (r.lit) {
+      ctx.fillStyle = '#fdcb6e'; ctx.shadowColor = '#fdcb6e'; ctx.shadowBlur = 16;
+    } else {
+      ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 2;
+    }
+    ctx.fill();
+    if (!r.lit) ctx.stroke();
+    ctx.fillStyle = r.lit ? '#2d3436' : 'rgba(255,255,255,.55)';
+    ctx.font = '800 13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('★', r.x, r.y + 1);
+    ctx.restore();
+  });
+  // 立靶
+  TARGETS.forEach(function(t) {
+    ctx.save();
+    ctx.fillStyle = t.down ? 'rgba(255,255,255,.12)' : '#e84393';
+    if (!t.down) { ctx.shadowColor = '#e84393'; ctx.shadowBlur = 12; }
+    ctx.fillRect(t.x, t.y, t.w, t.h);
+    ctx.fillStyle = t.down ? 'rgba(255,255,255,.25)' : '#fff';
+    ctx.font = '800 11px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('◆', t.x + t.w / 2, t.y + t.h / 2 + 4);
+    ctx.restore();
+  });
+  // 弹弓
+  SLINGS.forEach(function(sg) {
+    ctx.save();
+    ctx.strokeStyle = sg.flash > 0 ? '#ffeaa7' : '#00b894';
+    ctx.lineWidth = 7; ctx.lineCap = 'round';
+    ctx.shadowColor = sg.flash > 0 ? '#ffeaa7' : '#00b894'; ctx.shadowBlur = sg.flash > 0 ? 18 : 8;
+    ctx.beginPath(); ctx.moveTo(sg.x1, sg.y1); ctx.lineTo(sg.x2, sg.y2); ctx.stroke();
+    ctx.restore();
+  });
+  // 保险杠
+  BUMPERS.forEach(function(bp) {
+    ctx.save();
+    var g = ctx.createRadialGradient(bp.x - 7, bp.y - 8, 3, bp.x, bp.y, bp.r + 4);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(0.35, bp.color);
+    g.addColorStop(1, '#2d3436');
+    ctx.fillStyle = g;
+    ctx.shadowColor = bp.color; ctx.shadowBlur = bp.flash > 0 ? 26 : 12;
+    ctx.beginPath(); ctx.arc(bp.x, bp.y, bp.r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(bp.x, bp.y, bp.r - 6, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  });
+  // 挡板
+  [flipL, flipR].forEach(function(f, i) {
+    var tip = flipTip(f);
+    ctx.save();
+    ctx.strokeStyle = i === 0 ? '#00cec9' : '#fdcb6e';
+    ctx.lineWidth = FLIP.rad * 2; ctx.lineCap = 'round';
+    ctx.shadowColor = i === 0 ? '#00cec9' : '#fdcb6e'; ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.moveTo(f.px, f.py); ctx.lineTo(tip.x, tip.y); ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(f.px, f.py, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  });
+  // 弹珠轨迹 + 弹珠
+  if (G.state === 'playing' || G.state === 'ready') {
+    ctx.save();
+    G.trail.forEach(function(p, i) {
+      ctx.globalAlpha = (i / G.trail.length) * 0.35;
+      ctx.fillStyle = '#ffeaa7';
+      ctx.beginPath(); ctx.arc(p.x, p.y, BALL_R * (0.4 + 0.6 * i / G.trail.length), 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.restore();
+    var b = G.ball;
+    ctx.save();
+    var g2 = ctx.createRadialGradient(b.x - 3, b.y - 4, 1, b.x, b.y, BALL_R + 2);
+    g2.addColorStop(0, '#ffffff'); g2.addColorStop(0.5, '#ffeaa7'); g2.addColorStop(1, '#e17055');
+    ctx.fillStyle = g2;
+    ctx.shadowColor = '#ffeaa7'; ctx.shadowBlur = 14;
+    ctx.beginPath(); ctx.arc(b.x, b.y, BALL_R, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  // 底部洞口提示
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,255,255,.35)';
+  ctx.font = '700 12px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('▼ 别掉下去 ▼', 210, 692);
+  ctx.restore();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  drawTable();
+  // 蓄力条
+  if (G.charging) $('powerFill').style.height = Math.round(G.launchPower * 100) + '%';
+}
+
+/* ---------- 主循环 ---------- */
+var lastT = 0, acc = 0;
+function step(dt) {
+  nowMs += dt;
+  if (G.charging && G.state === 'ready') {
+    G.launchPower += 0.022 * G.chargeDir * (dt / 16.7);
+    if (G.launchPower >= 1) { G.launchPower = 1; G.chargeDir = -1; }
+    if (G.launchPower <= 0) { G.launchPower = 0; G.chargeDir = 1; }
+    if (nowMs - G._chargeStart > 6000) launchBall(); // 6 秒不松手自动发射
+  }
+  if (!G.paused) physics();
+  draw();
+}
+function frame(t) {
+  requestAnimationFrame(frame);
+  if (!lastT) lastT = t;
+  var dt = Math.min(50, t - lastT);
+  lastT = t;
+  acc += dt;
+  while (acc >= STEP) { step(STEP); acc -= STEP; }
+}
+
+/* ---------- 输入 ---------- */
+function setFlipper(side, on) {
+  if (side === 'L') flipL.on = on; else flipR.on = on;
+  if (on) sfx('flip');
+}
+function chargeStart() {
+  if (G.state !== 'ready' || G.paused) return;
+  G.charging = true; G.chargeDir = 1; G._chargeStart = nowMs;
+  $('powerBar').classList.add('show');
+}
+function chargeEnd() {
+  if (!G.charging) return;
+  launchBall();
+}
+function bindHold(el, down, up) {
+  el.addEventListener('pointerdown', function(e) { e.preventDefault(); down(); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(function(ev) {
+    el.addEventListener(ev, function(e) { e.preventDefault(); up(); });
+  });
+}
+bindHold($('btnLeft'), function(){ setFlipper('L', true); }, function(){ setFlipper('L', false); });
+bindHold($('btnRight'), function(){ setFlipper('R', true); }, function(){ setFlipper('R', false); });
+bindHold($('btnLaunch'), chargeStart, chargeEnd);
+// 点台面左右半边控挡板
+cv.addEventListener('pointerdown', function(e) {
+  if (G.state === 'menu' || G.state === 'over') return;
+  var r = cv.getBoundingClientRect();
+  var x = (e.clientX - r.left) / r.width * W;
+  setFlipper(x < W / 2 ? 'L' : 'R', true);
+});
+['pointerup', 'pointerleave', 'pointercancel'].forEach(function(ev) {
+  cv.addEventListener(ev, function() { setFlipper('L', false); setFlipper('R', false); });
+});
+document.addEventListener('keydown', function(e) {
+  if (e.repeat) return;
+  if (e.code === 'ArrowLeft' || e.code === 'KeyZ') { setFlipper('L', true); e.preventDefault(); }
+  else if (e.code === 'ArrowRight' || e.code === 'KeyM') { setFlipper('R', true); e.preventDefault(); }
+  else if (e.code === 'Space' || e.code === 'ArrowDown') {
+    if (G.state === 'ready') chargeStart();
+    else if (G.state === 'menu') startGame();
+    else if (G.state === 'over') startGame();
+    e.preventDefault();
+  }
+  else if (e.code === 'KeyP') togglePause();
+});
+document.addEventListener('keyup', function(e) {
+  if (e.code === 'ArrowLeft' || e.code === 'KeyZ') setFlipper('L', false);
+  else if (e.code === 'ArrowRight' || e.code === 'KeyM') setFlipper('R', false);
+  else if (e.code === 'Space' || e.code === 'ArrowDown') chargeEnd();
+});
+function togglePause() {
+  if (G.state === 'menu' || G.state === 'over') return;
+  G.paused = !G.paused;
+  $('pauseBtn').textContent = G.paused ? '▶ 继续' : '⏸ 暂停';
+  if (G.paused) toast('已暂停');
+}
+$('pauseBtn').addEventListener('click', togglePause);
+$('soundBtn').addEventListener('click', function() {
+  soundOn = !soundOn;
+  this.textContent = soundOn ? '🔊 音效：开' : '🔇 音效：关';
+});
+$('startBtn').addEventListener('click', startGame);
+$('againBtn').addEventListener('click', startGame);
+$('homeBtn').addEventListener('click', function() { location.href = '../'; });
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden && G.state === 'playing' && !G.paused) togglePause();
+});
+
+/* ---------- 启动 ---------- */
+hud();
+draw();
+requestAnimationFrame(frame);
+
+/* 供自动化测试使用的调试接口 */
+window.__pinball = {
+  G: G, flipL: flipL, flipR: flipR,
+  startGame: startGame, launchBall: launchBall, step: step,
+  setFlipper: setFlipper, chargeStart: chargeStart, chargeEnd: chargeEnd,
+  serveBall: serveBall, BUMPERS: BUMPERS, ROLLOVERS: ROLLOVERS, TARGETS: TARGETS
+};
+</script>
+</body>
+</html>
