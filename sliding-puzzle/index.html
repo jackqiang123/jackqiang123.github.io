@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>滑块拼图大作战 · 游戏小站</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(165deg,#1d2b53,#2d4a7a 55%,#3a6ea5);min-height:100vh;color:#fff}
+.wrap{max-width:480px;margin:0 auto;padding:14px 14px 30px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.top a{color:#cfe6ff;text-decoration:none;font-size:15px;font-weight:700}
+.top button{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:999px;padding:7px 14px;font-size:13px}
+h1{text-align:center;font-size:26px;margin:10px 0 2px;text-shadow:0 3px 12px rgba(0,0,0,.4)}
+.sub{text-align:center;color:#bcd6f2;font-size:13px;margin-bottom:12px;line-height:1.6}
+.stats{display:flex;gap:8px;margin-bottom:12px}
+.stat{flex:1;background:rgba(0,0,0,.28);border-radius:12px;padding:8px 4px;text-align:center}
+.stat b{display:block;font-size:19px}
+.stat span{font-size:11px;color:#bcd6f2}
+.sec{font-size:13px;font-weight:700;color:#cfe6ff;margin:10px 0 6px;text-align:center}
+.themes{display:flex;gap:8px;justify-content:center;margin-bottom:4px}
+.theme{width:104px;border-radius:14px;border:3px solid rgba(255,255,255,.3);background:rgba(0,0,0,.25);padding:6px 4px 7px;color:#fff;cursor:pointer}
+.theme canvas{width:88px;height:88px;border-radius:10px;display:block;margin:0 auto 5px}
+.theme span{font-size:12.5px;font-weight:700;display:block;text-align:center}
+.theme.on{border-color:#ffd166;background:rgba(255,209,102,.18)}
+.diffs{display:flex;gap:8px;justify-content:center;margin-bottom:12px}
+.diffs button{flex:1;max-width:130px;height:42px;border-radius:12px;border:2px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;font-size:14px;font-weight:800}
+.diffs button.on{background:#ffd166;border-color:#fff;color:#3a2200}
+.board-wrap{background:rgba(0,0,0,.35);border-radius:18px;padding:12px;box-shadow:0 14px 30px rgba(0,0,0,.45);touch-action:none}
+#board{position:relative;width:100%;aspect-ratio:1;border-radius:12px;overflow:hidden;background:rgba(0,0,0,.25)}
+.tile{position:absolute;border-radius:9px;background-repeat:no-repeat;cursor:pointer;transition:transform .16s ease;box-shadow:inset 0 0 0 2px rgba(255,255,255,.55),0 3px 8px rgba(0,0,0,.35);user-select:none}
+.tile:active{filter:brightness(1.12)}
+.tile .num{position:absolute;top:4px;left:6px;font-size:13px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);background:rgba(0,0,0,.35);border-radius:999px;padding:1px 7px}
+.tile .num.off{display:none}
+.blank-slot{position:absolute;border-radius:9px;border:2px dashed rgba(255,255,255,.4);background:rgba(0,0,0,.18);transition:transform .16s ease}
+.hint-flash{animation:hintPulse .45s ease-in-out 3}
+@keyframes hintPulse{0%,100%{box-shadow:inset 0 0 0 2px rgba(255,255,255,.55)}50%{box-shadow:inset 0 0 0 5px #ffd166,0 0 22px #ffd166}}
+.btns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.btns button{flex:1;min-width:80px;height:46px;border-radius:13px;border:none;font-size:15px;font-weight:800;color:#fff;background:#0984e3;box-shadow:0 4px 0 rgba(0,0,0,.25)}
+.btns button:active{transform:translateY(2px);box-shadow:none}
+.btns button.green{background:#00b894}
+.btns button.orange{background:#e67e22}
+.btns button.purple{background:#6c5ce7}
+.btns button:disabled{opacity:.45}
+.howto{margin-top:14px;background:rgba(0,0,0,.25);border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.9;color:#dbe9f8}
+.howto b{color:#ffd166}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+.overlay.hidden{display:none}
+.panel{background:#fff;color:#2d3436;border-radius:20px;padding:26px 22px;max-width:360px;width:100%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+.panel h2{font-size:24px;margin-bottom:8px}
+.panel .stars{font-size:34px;letter-spacing:4px;margin:6px 0}
+.panel p{font-size:14px;line-height:1.9;color:#636e72}
+.panel p b{color:#2d3436}
+.panel img{width:100%;border-radius:14px;display:block;margin-bottom:12px}
+.panel .row{display:flex;gap:10px;margin-top:16px}
+.panel .row button{flex:1;height:46px;border-radius:12px;border:none;font-size:15px;font-weight:800;color:#fff;background:#0984e3}
+.panel .row button.gray{background:#95a5a6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a href="../">← 回主页</a>
+    <button id="soundBtn">🔊 音效开</button>
+  </div>
+  <h1>🧩 滑块拼图大作战</h1>
+  <p class="sub">把打乱的图块滑回原位，拼出完整风景画<br>点同行/同列的图块可一次滑一整排</p>
+
+  <div class="stats">
+    <div class="stat"><b id="movesEl">0</b><span>步数</span></div>
+    <div class="stat"><b id="timeEl">0:00</b><span>用时</span></div>
+    <div class="stat"><b id="bestEl">—</b><span>本难度最少步</span></div>
+  </div>
+
+  <div class="sec">🎨 选一幅画</div>
+  <div class="themes" id="themes"></div>
+
+  <div class="sec">🧩 选难度</div>
+  <div class="diffs">
+    <button data-size="3">3×3 简单</button>
+    <button data-size="4" class="on">4×4 经典</button>
+    <button data-size="5">5×5 挑战</button>
+  </div>
+
+  <div class="board-wrap">
+    <div id="board"></div>
+  </div>
+
+  <div class="btns">
+    <button id="shuffleBtn" class="green">🔀 打乱重开</button>
+    <button id="previewBtn" class="orange">🖼️ 看原图</button>
+    <button id="hintBtn" class="purple">💡 提示 (<span id="hintLeft">3</span>)</button>
+    <button id="numBtn">🔢 数字开</button>
+  </div>
+
+  <div class="howto">
+    <b>玩法：</b>点空白格旁边的图块把它滑过去；点同行或同列的图块，一整排一起滑。键盘方向键移动空白格，手机上在棋盘上滑动也可以。<br>
+    <b>目标：</b>把所有图块放回正确位置，拼出完整画面。步数越少、时间越短，星级越高。
+  </div>
+</div>
+
+<div class="overlay hidden" id="winOverlay">
+  <div class="panel">
+    <h2>🎉 拼出来啦！</h2>
+    <div class="stars" id="winStars">⭐⭐⭐</div>
+    <p id="winText"></p>
+    <div class="row">
+      <button id="againBtn">再拼一次</button>
+      <button id="winCloseBtn" class="gray">看看棋盘</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="previewOverlay">
+  <div class="panel">
+    <h2 id="previewTitle">🖼️ 原图</h2>
+    <img id="previewImg" alt="原图">
+    <p>照着这幅画，把图块滑回原位吧。</p>
+    <div class="row"><button id="previewCloseBtn">知道了</button></div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var SIZE = 600;                 // 场景画布边长
+var boardEl = document.getElementById('board');
+var movesEl = document.getElementById('movesEl');
+var timeEl = document.getElementById('timeEl');
+var bestEl = document.getElementById('bestEl');
+var hintLeftEl = document.getElementById('hintLeft');
+
+/* ---------- 确定性随机数（同一主题每次画同一幅画） ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+
+/* ---------- 场景绘制：三幅手绘风景 ---------- */
+function ridge(ctx,rnd,y0,amp,color,base){
+  ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(0,SIZE);
+  var x=0,y=y0;
+  ctx.lineTo(0,y);
+  while(x<SIZE){x+=40+rnd()*90;y=y0+(rnd()-0.5)*amp;ctx.lineTo(x,y);}
+  ctx.lineTo(SIZE,SIZE);ctx.closePath();ctx.fill();
+  void base;
+}
+function pine(ctx,x,y,s,color){
+  ctx.fillStyle=color;
+  ctx.fillRect(x-3*s,y-8*s,6*s,10*s);
+  for(var i=0;i<3;i++){var w=(26-i*7)*s;ctx.beginPath();ctx.moveTo(x-w/2,y-i*14*s);ctx.lineTo(x,y-(i*14+18)*s);ctx.lineTo(x+w/2,y-i*14*s);ctx.closePath();ctx.fill();}
+}
+function cloud(ctx,x,y,s,color){
+  ctx.fillStyle=color;
+  ctx.beginPath();
+  ctx.ellipse(x,y,34*s,16*s,0,0,Math.PI*2);
+  ctx.ellipse(x-24*s,y+5*s,22*s,12*s,0,0,Math.PI*2);
+  ctx.ellipse(x+26*s,y+5*s,24*s,13*s,0,0,Math.PI*2);
+  ctx.fill();
+}
+function bird(ctx,x,y,s,color){
+  ctx.strokeStyle=color;ctx.lineWidth=2.5*s;ctx.beginPath();
+  ctx.moveTo(x-9*s,y);ctx.quadraticCurveTo(x-4*s,y-7*s,x,y);
+  ctx.quadraticCurveTo(x+4*s,y-7*s,x+9*s,y);ctx.stroke();
+}
+function drawScene(theme){
+  var cv=document.createElement('canvas');cv.width=SIZE;cv.height=SIZE;
+  var ctx=cv.getContext('2d');if(!ctx)return null;
+  var rnd=mulberry32(1000+theme*777);
+  var i,x,y;
+  if(theme===0){ /* 日落湖畔 */
+    var sky=ctx.createLinearGradient(0,0,0,360);
+    sky.addColorStop(0,'#ff7e5f');sky.addColorStop(.55,'#feb47b');sky.addColorStop(1,'#ffd194');
+    ctx.fillStyle=sky;ctx.fillRect(0,0,SIZE,360);
+    var glow=ctx.createRadialGradient(300,250,10,300,250,180);
+    glow.addColorStop(0,'rgba(255,243,176,.95)');glow.addColorStop(.4,'rgba(255,190,120,.55)');glow.addColorStop(1,'rgba(255,190,120,0)');
+    ctx.fillStyle=glow;ctx.fillRect(0,0,SIZE,360);
+    ctx.fillStyle='#fff3b0';ctx.beginPath();ctx.arc(300,250,52,0,Math.PI*2);ctx.fill();
+    cloud(ctx,110,90,1,'rgba(255,220,200,.85)');cloud(ctx,470,70,0.8,'rgba(255,220,200,.8)');cloud(ctx,430,150,0.6,'rgba(255,200,180,.7)');
+    ridge(ctx,rnd,300,46,'#8e6bbf');ridge(ctx,rnd,330,40,'#6b4a8f');
+    var lake=ctx.createLinearGradient(0,360,0,SIZE);
+    lake.addColorStop(0,'#ff9a76');lake.addColorStop(.5,'#c86a9e');lake.addColorStop(1,'#7b4b94');
+    ctx.fillStyle=lake;ctx.fillRect(0,360,SIZE,240);
+    ctx.fillStyle='rgba(255,240,180,.75)';
+    for(i=0;i<14;i++){var w=30+rnd()*90;ctx.fillRect(300-w/2+(rnd()-.5)*30,372+i*16,w,4);}
+    ctx.fillStyle='#3d2b52';
+    pine(ctx,52,392,1.1,'#3d2b52');pine(ctx,540,398,1.3,'#3d2b52');pine(ctx,96,404,0.8,'#3d2b52');
+    ctx.fillStyle='#2c1f3d';ctx.fillRect(0,560,SIZE,40);
+    ctx.fillStyle='#ff8fb8';for(i=0;i<10;i++){ctx.beginPath();ctx.arc(20+rnd()*560,566+rnd()*26,3+rnd()*3,0,Math.PI*2);ctx.fill();}
+    ctx.fillStyle='#ffd166';for(i=0;i<8;i++){ctx.beginPath();ctx.arc(20+rnd()*560,568+rnd()*24,2.5+rnd()*2.5,0,Math.PI*2);ctx.fill();}
+    bird(ctx,180,120,1,'#5b3a5e');bird(ctx,230,100,0.8,'#5b3a5e');bird(ctx,400,180,0.9,'#5b3a5e');
+  }else if(theme===1){ /* 樱花山谷 */
+    var sky2=ctx.createLinearGradient(0,0,0,340);
+    sky2.addColorStop(0,'#7ec8f7');sky2.addColorStop(1,'#e8f7ff');
+    ctx.fillStyle=sky2;ctx.fillRect(0,0,SIZE,340);
+    ctx.fillStyle='#fff8d6';ctx.beginPath();ctx.arc(490,80,44,0,Math.PI*2);ctx.fill();
+    cloud(ctx,120,80,1,'rgba(255,255,255,.95)');cloud(ctx,330,130,0.8,'rgba(255,255,255,.9)');cloud(ctx,480,200,0.7,'rgba(255,255,255,.85)');
+    ridge(ctx,rnd,300,40,'#8fd07a');ridge(ctx,rnd,350,44,'#5cb531');ridge(ctx,rnd,400,40,'#3f9e2a');
+    ctx.fillStyle='#3f9e2a';ctx.fillRect(0,420,SIZE,180);
+    /* 小溪 */
+    ctx.fillStyle='#7fd4f7';ctx.beginPath();ctx.moveTo(250,420);
+    ctx.bezierCurveTo(300,480,200,520,260,600);ctx.lineTo(310,600);
+    ctx.bezierCurveTo(260,520,350,480,300,420);ctx.closePath();ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.8)';
+    for(i=0;i<10;i++){ctx.fillRect(240+rnd()*60,430+rnd()*160,10,3);}
+    /* 樱花树 */
+    function cherry(tx,ty,s){
+      ctx.fillStyle='#6b4a2f';ctx.fillRect(tx-5*s,ty-30*s,10*s,34*s);
+      ctx.beginPath();ctx.moveTo(tx-5*s,ty-28*s);ctx.lineTo(tx-22*s,ty-52*s);ctx.lineTo(tx-14*s,ty-52*s);ctx.lineTo(tx,ty-32*s);ctx.closePath();ctx.fill();
+      ctx.beginPath();ctx.moveTo(tx+5*s,ty-28*s);ctx.lineTo(tx+24*s,ty-56*s);ctx.lineTo(tx+16*s,ty-50*s);ctx.lineTo(tx,ty-32*s);ctx.closePath();ctx.fill();
+      var cols=['#ffc9dd','#ff9ec4','#ffb7d5','#ff8fb8'];
+      for(var k=0;k<26;k++){
+        ctx.fillStyle=cols[Math.floor(rnd()*cols.length)];
+        ctx.beginPath();ctx.arc(tx+(rnd()-.5)*110*s,ty-58*s+(rnd()-.5)*52*s,(8+rnd()*10)*s,0,Math.PI*2);ctx.fill();
+      }
+    }
+    cherry(120,430,1);cherry(480,440,1.15);cherry(310,470,0.8);
+    /* 飘落花瓣 */
+    ctx.fillStyle='#ffb7d5';
+    for(i=0;i<26;i++){ctx.save();ctx.translate(rnd()*SIZE,rnd()*SIZE);ctx.rotate(rnd()*Math.PI);ctx.beginPath();ctx.ellipse(0,0,6,3.5,0,0,Math.PI*2);ctx.fill();ctx.restore();}
+    /* 草地小花 */
+    var fcols=['#fff','#ffd166','#ff8fb8'];
+    for(i=0;i<16;i++){ctx.fillStyle=fcols[i%3];ctx.beginPath();ctx.arc(15+rnd()*570,500+rnd()*85,3.5,0,Math.PI*2);ctx.fill();}
+  }else{ /* 星空雪山 */
+    var sky3=ctx.createLinearGradient(0,0,0,380);
+    sky3.addColorStop(0,'#0b1026');sky3.addColorStop(.6,'#1b2a52');sky3.addColorStop(1,'#2c4a7a');
+    ctx.fillStyle=sky3;ctx.fillRect(0,0,SIZE,380);
+    for(i=0;i<130;i++){
+      var r=rnd();ctx.fillStyle='rgba(255,255,255,'+(0.35+r*0.65)+')';
+      ctx.beginPath();ctx.arc(rnd()*SIZE,rnd()*330,0.6+r*1.8,0,Math.PI*2);ctx.fill();
+    }
+    for(i=0;i<6;i++){ /* 十字亮星 */
+      x=40+rnd()*520;y=30+rnd()*200;ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(x-7,y);ctx.lineTo(x+7,y);ctx.moveTo(x,y-7);ctx.lineTo(x,y+7);ctx.stroke();
+    }
+    /* 极光 */
+    ctx.save();ctx.globalAlpha=.5;
+    for(i=0;i<2;i++){
+      var ag=ctx.createLinearGradient(0,60+i*46,0,150+i*46);
+      ag.addColorStop(0,'rgba(80,255,170,0)');ag.addColorStop(.5,'rgba(80,255,170,.55)');ag.addColorStop(1,'rgba(80,255,170,0)');
+      ctx.fillStyle=ag;ctx.beginPath();ctx.moveTo(0,110+i*40);
+      for(x=0;x<=SIZE;x+=40){ctx.lineTo(x,100+i*40+Math.sin(x/90+i)*22);}
+      ctx.lineTo(SIZE,190+i*40);ctx.lineTo(0,190+i*40);ctx.closePath();ctx.fill();
+    }
+    ctx.restore();
+    var mg=ctx.createRadialGradient(480,90,8,480,90,110);
+    mg.addColorStop(0,'rgba(240,244,255,.9)');mg.addColorStop(.35,'rgba(220,230,255,.4)');mg.addColorStop(1,'rgba(220,230,255,0)');
+    ctx.fillStyle=mg;ctx.fillRect(360,0,240,220);
+    ctx.fillStyle='#f4f6ff';ctx.beginPath();ctx.arc(480,90,40,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(180,190,220,.5)';
+    ctx.beginPath();ctx.arc(468,80,8,0,Math.PI*2);ctx.arc(494,102,6,0,Math.PI*2);ctx.arc(486,72,4,0,Math.PI*2);ctx.fill();
+    /* 雪山 */
+    function snowMt(bx,bw,ph,color){
+      ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(bx-bw/2,380);ctx.lineTo(bx,380-ph);ctx.lineTo(bx+bw/2,380);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#f8faff';ctx.beginPath();ctx.moveTo(bx-38,380-ph+62);ctx.lineTo(bx,380-ph);
+      ctx.lineTo(bx+38,380-ph+62);ctx.lineTo(bx+16,380-ph+52);ctx.lineTo(bx,380-ph+66);ctx.lineTo(bx-14,380-ph+50);ctx.closePath();ctx.fill();
+    }
+    snowMt(150,340,210,'#2e3d5c');snowMt(420,380,260,'#24334f');snowMt(300,300,170,'#33465f');
+    /* 松林 */
+    for(i=0;i<12;i++){pine(ctx,20+i*50+rnd()*20,392+rnd()*14,0.7+rnd()*0.5,'#12261c');}
+    /* 冰湖 */
+    var lake3=ctx.createLinearGradient(0,420,0,SIZE);
+    lake3.addColorStop(0,'#2c5a86');lake3.addColorStop(1,'#0e2238');
+    ctx.fillStyle=lake3;ctx.fillRect(0,420,SIZE,180);
+    ctx.fillStyle='rgba(240,244,255,.5)';
+    for(i=0;i<10;i++){var w2=24+rnd()*70;ctx.fillRect(480-w2/2+(rnd()-.5)*24,432+i*15,w2,3);}
+    ctx.strokeStyle='rgba(200,220,255,.35)';ctx.lineWidth=1.5;
+    for(i=0;i<7;i++){ctx.beginPath();x=rnd()*SIZE;ctx.moveTo(x,430+rnd()*40);ctx.lineTo(x+(rnd()-.5)*90,520+rnd()*70);ctx.stroke();}
+  }
+  var url=null;
+  try{url=cv.toDataURL('image/png');}catch(e){url=null;}
+  return {canvas:cv,url:url};
+}
+
+/* ---------- 音效 ---------- */
+var audioCtx=null, soundOn=true;
+try{soundOn=localStorage.getItem('slidingPuzzleSound')!=='off';}catch(e){}
+function beep(freq,dur,type,vol){
+  if(!soundOn)return;
+  try{
+    if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    var o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.type=type||'sine';o.frequency.value=freq;g.gain.value=vol||0.12;
+    o.connect(g);g.connect(audioCtx.destination);
+    o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+dur);
+    o.stop(audioCtx.currentTime+dur);
+  }catch(e){}
+}
+function sndSlide(){beep(520,0.07,'triangle',0.08);}
+function sndWin(){var n=[523,659,784,1047];n.forEach(function(f,i){setTimeout(function(){beep(f,0.22,'sine',0.14);},i*110);});}
+function sndBad(){beep(180,0.12,'sawtooth',0.06);}
+
+/* ---------- 游戏状态 ---------- */
+var THEMES=[
+  {name:'🌇 日落湖畔',css:'linear-gradient(135deg,#ff7e5f,#feb47b)'},
+  {name:'🌸 樱花山谷',css:'linear-gradient(135deg,#7ec8f7,#a8e063)'},
+  {name:'🌌 星空雪山',css:'linear-gradient(135deg,#0b1026,#2c4a7a)'}
+];
+var PAR={3:60,4:150,5:320};
+var state={theme:0,size:4,tiles:[],blank:15,moves:0,started:false,won:false,hints:3,showNum:true,timerId:null,seconds:0,sceneUrl:null};
+var scenes={};
+
+function buildScenes(){
+  for(var t=0;t<3;t++){
+    var s=drawScene(t);
+    scenes[t]=s&&s.url?s.url:null;
+  }
+}
+buildScenes();
+
+/* 主题按钮（小预览图） */
+var themesEl=document.getElementById('themes');
+THEMES.forEach(function(th,i){
+  var b=document.createElement('button');
+  b.className='theme'+(i===state.theme?' on':'');
+  var cv=document.createElement('canvas');cv.width=88;cv.height=88;
+  var c2=cv.getContext('2d');
+  if(c2&&scenes[i+'_cv']===undefined){
+    var src=drawScene(i);
+    if(src&&src.canvas){try{c2.drawImage(src.canvas,0,0,88,88);}catch(e){}}
+  }
+  if(!c2||!scenes[i]){b.style.background=th.css;}
+  b.appendChild(cv);
+  var sp=document.createElement('span');sp.textContent=th.name;b.appendChild(sp);
+  b.addEventListener('click',function(){setTheme(i);});
+  themesEl.appendChild(b);
+});
+
+function setTheme(i){
+  state.theme=i;
+  Array.prototype.forEach.call(themesEl.children,function(b,idx){b.classList.toggle('on',idx===i);});
+  state.sceneUrl=scenes[i];
+  document.getElementById('previewTitle').textContent='🖼️ 原图 · '+THEMES[i].name;
+  renderBoard(true);
+  beep(660,0.06,'triangle',0.07);
+}
+function setSize(n){
+  state.size=n;
+  Array.prototype.forEach.call(document.querySelectorAll('.diffs button'),function(b){
+    b.classList.toggle('on',+b.dataset.size===n);
+  });
+  newGame();
+}
+document.querySelectorAll('.diffs button').forEach(function(b){
+  b.addEventListener('click',function(){setSize(+b.dataset.size);});
+});
+
+/* ---------- 棋盘 ---------- */
+function solvedTiles(n){var a=[];for(var i=0;i<n*n;i++)a.push(i);return a;}
+function boardPx(){var w=boardEl.clientWidth;return w>0?w:420;}
+function renderBoard(full){
+  var n=state.size,px=boardEl.clientWidth>0?boardEl.clientWidth:420,ts=px/n;
+  var url=state.sceneUrl;
+  boardEl.querySelectorAll('.tile,.blank-slot').forEach(function(el){el.remove();});
+  /* 空白槽 */
+  var slot=document.createElement('div');
+  slot.className='blank-slot';
+  slot.style.width=(ts-4)+'px';slot.style.height=(ts-4)+'px';
+  slot.style.transform='translate('+(state.blank%n)*ts+2+'px,'+Math.floor(state.blank/n)*ts+2+'px)';
+  boardEl.appendChild(slot);
+  state.tiles.forEach(function(v,pos){
+    if(v===n*n-1)return;
+    var d=document.createElement('div');
+    d.className='tile';d.dataset.pos=pos;
+    d.style.width=(ts-4)+'px';d.style.height=(ts-4)+'px';
+    d.style.transform='translate('+(pos%n)*ts+2+'px,'+Math.floor(pos/n)*ts+2+'px)';
+    if(url){d.style.backgroundImage='url('+url+')';d.style.backgroundSize=px+'px '+px+'px';
+      d.style.backgroundPosition=(-(v%n)*ts)+'px '+(-Math.floor(v/n)*ts)+'px';}
+    else{d.style.background=THEMES[state.theme].css;}
+    var num=document.createElement('span');
+    num.className='num'+(state.showNum?'':' off');num.textContent=v+1;
+    d.appendChild(num);
+    d.addEventListener('click',function(){onTileClick(pos);});
+    boardEl.appendChild(d);
+  });
+  updateStats();
+}
+function updateStats(){
+  movesEl.textContent=state.moves;
+  var m=Math.floor(state.seconds/60),s=state.seconds%60;
+  timeEl.textContent=m+':'+(s<10?'0':'')+s;
+  hintLeftEl.textContent=state.hints;
+  var best=null;
+  try{best=JSON.parse(localStorage.getItem('slidingPuzzleBest_'+state.size)||'null');}catch(e){}
+  bestEl.textContent=best?best.moves+' 步':'—';
+}
+function startTimer(){
+  if(state.timerId)return;
+  state.timerId=setInterval(function(){state.seconds++;updateStats();},1000);
+}
+function stopTimer(){if(state.timerId){clearInterval(state.timerId);state.timerId=null;}}
+function rc(pos){var n=state.size;return{r:Math.floor(pos/n),c:pos%n};}
+function idx(r,c){return r*state.size+c;}
+function isSolved(){
+  for(var i=0;i<state.tiles.length;i++)if(state.tiles[i]!==i)return false;
+  return true;
+}
+function swapTiles(a,b){
+  var t=state.tiles[a];state.tiles[a]=state.tiles[b];state.tiles[b]=t;
+  if(state.tiles[a]===state.size*state.size-1)state.blank=a;
+  if(state.tiles[b]===state.size*state.size-1)state.blank=b;
+}
+function moveBlank(dr,dc,countMove){
+  var b=rc(state.blank),nr=b.r+dr,nc=b.c+dc;
+  if(nr<0||nr>=state.size||nc<0||nc>=state.size)return false;
+  var p=idx(nr,nc);
+  swapTiles(state.blank,p);
+  if(countMove!==false){
+    state.moves++;
+    if(!state.started){state.started=true;startTimer();}
+    sndSlide();
+    renderBoard(false);
+    if(isSolved())onWin();
+  }
+  return true;
+}
+function onTileClick(pos){
+  if(state.won)return;
+  var b=rc(state.blank),p=rc(pos);
+  if(p.r===b.r&&p.c===b.c)return;
+  if(p.r===b.r){ /* 同行滑一排：从空白格向点中的格子逐格拉 */
+    var step=p.c<b.c?1:-1,cur=state.blank;
+    while(cur!==pos){var prev=cur-step;swapTiles(cur,prev);cur=prev;}
+    afterSlide();
+  }else if(p.c===b.c){ /* 同列滑一排 */
+    var step2=p.r<b.r?state.size:-state.size,cur2=state.blank;
+    while(cur2!==pos){var prev2=cur2-step2;swapTiles(cur2,prev2);cur2=prev2;}
+    afterSlide();
+  }else{sndBad();}
+}
+function afterSlide(){
+  state.moves++;
+  if(!state.started){state.started=true;startTimer();}
+  sndSlide();
+  renderBoard(false);
+  if(isSolved())onWin();
+}
+function shuffleBoard(){
+  var n=state.size,steps=n===3?90:n===4?170:320;
+  var lastDr=0,lastDc=0;
+  for(var i=0;i<steps;i++){
+    var dirs=[[1,0],[-1,0],[0,1],[0,-1]].filter(function(d){
+      var b=rc(state.blank),nr=b.r+d[0],nc=b.c+d[1];
+      if(nr<0||nr>=n||nc<0||nc>=n)return false;
+      return !(d[0]===-lastDr&&d[1]===-lastDc);
+    });
+    var d=dirs[Math.floor(Math.random()*dirs.length)];
+    moveBlank(d[0],d[1],false);
+    lastDr=d[0];lastDc=d[1];
+  }
+  if(isSolved())shuffleBoard();
+}
+function newGame(){
+  var n=state.size;
+  state.tiles=solvedTiles(n);
+  state.blank=n*n-1;state.moves=0;state.seconds=0;state.started=false;
+  state.won=false;state.hints=3;
+  stopTimer();updateStats();
+  shuffleBoard();
+  renderBoard(true);
+  document.getElementById('winOverlay').classList.add('hidden');
+}
+function onWin(){
+  state.won=true;stopTimer();
+  sndWin();
+  var par=PAR[state.size],stars=state.moves<=par?3:state.moves<=par*1.8?2:1;
+  document.getElementById('winStars').textContent='⭐'.repeat(stars)+'☆'.repeat(3-stars);
+  var best=null,isBest=false;
+  try{best=JSON.parse(localStorage.getItem('slidingPuzzleBest_'+state.size)||'null');}catch(e){}
+  if(!best||state.moves<best.moves){
+    isBest=true;
+    try{localStorage.setItem('slidingPuzzleBest_'+state.size,JSON.stringify({moves:state.moves,time:state.seconds}));}catch(e){}
+  }
+  var m=Math.floor(state.seconds/60),s=state.seconds%60;
+  document.getElementById('winText').innerHTML=
+    '难度：'+state.size+'×'+state.size+' · '+THEMES[state.theme].name+'<br>'+
+    '用时 <b>'+m+' 分 '+(s<10?'0':'')+s+' 秒</b> · 步数 <b>'+state.moves+'</b> 步<br>'+
+    (isBest?'🏆 新纪录！本难度最少步<br>':'本难度最少步：<b>'+(best?best.moves:'—')+'</b> 步<br>')+
+    '（三星标准：'+par+' 步以内）';
+  updateStats();
+  setTimeout(function(){document.getElementById('winOverlay').classList.remove('hidden');},350);
+}
+function doHint(){
+  if(state.won)return;
+  if(state.hints<=0){sndBad();return;}
+  var misplaced=[];
+  for(var pos=0;pos<state.tiles.length;pos++){
+    if(state.tiles[pos]!==pos&&state.tiles[pos]!==state.size*state.size-1)misplaced.push(pos);
+  }
+  if(!misplaced.length)return;
+  state.hints--;
+  var pos2=misplaced[Math.floor(Math.random()*misplaced.length)];
+  var v=state.tiles[pos2],homeR=Math.floor(v/state.size),homeC=v%state.size;
+  var n=state.size,ts=boardPx()/n;
+  var mark=document.createElement('div');
+  mark.className='tile hint-flash';
+  mark.style.width=(ts-4)+'px';mark.style.height=(ts-4)+'px';
+  mark.style.transform='translate('+homeC*ts+2+'px,'+homeR*ts+2+'px)';
+  mark.style.background='rgba(255,209,102,.25)';
+  mark.style.pointerEvents='none';
+  mark.style.zIndex='5';
+  var tag=document.createElement('span');
+  tag.className='hint-tag';tag.textContent='应到这儿 · '+(v+1)+'号';
+  tag.style.cssText='position:absolute;top:4px;left:6px;font-size:11px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.9);background:rgba(0,0,0,.5);border-radius:999px;padding:1px 7px;white-space:nowrap';
+  mark.appendChild(tag);
+  boardEl.appendChild(mark);
+  setTimeout(function(){mark.remove();},1500);
+  beep(880,0.1,'sine',0.1);
+  updateStats();
+}
+
+/* ---------- 按钮与输入 ---------- */
+document.getElementById('shuffleBtn').addEventListener('click',function(){newGame();beep(660,0.06,'triangle',0.07);});
+document.getElementById('againBtn').addEventListener('click',function(){newGame();});
+document.getElementById('winCloseBtn').addEventListener('click',function(){
+  document.getElementById('winOverlay').classList.add('hidden');
+});
+document.getElementById('previewBtn').addEventListener('click',function(){
+  var img=document.getElementById('previewImg');
+  if(state.sceneUrl){img.src=state.sceneUrl;img.style.display='block';}
+  else{img.style.display='none';}
+  document.getElementById('previewOverlay').classList.remove('hidden');
+});
+document.getElementById('previewCloseBtn').addEventListener('click',function(){
+  document.getElementById('previewOverlay').classList.add('hidden');
+});
+document.getElementById('hintBtn').addEventListener('click',doHint);
+document.getElementById('numBtn').addEventListener('click',function(){
+  state.showNum=!state.showNum;
+  this.textContent=state.showNum?'🔢 数字开':'🔢 数字关';
+  boardEl.querySelectorAll('.num').forEach(function(el){el.classList.toggle('off',!state.showNum);});
+});
+var soundBtn=document.getElementById('soundBtn');
+soundBtn.textContent=soundOn?'🔊 音效开':'🔇 音效关';
+soundBtn.addEventListener('click',function(){
+  soundOn=!soundOn;
+  try{localStorage.setItem('slidingPuzzleSound',soundOn?'on':'off');}catch(e){}
+  soundBtn.textContent=soundOn?'🔊 音效开':'🔇 音效关';
+  if(soundOn)beep(660,0.06,'triangle',0.07);
+});
+document.addEventListener('keydown',function(e){
+  if(state.won)return;
+  var map={ArrowUp:[1,0],ArrowDown:[-1,0],ArrowLeft:[0,1],ArrowRight:[0,-1]};
+  var d=map[e.key];
+  if(d){e.preventDefault();moveBlank(d[0],d[1]);}
+});
+var touchX=0,touchY=0;
+boardEl.addEventListener('touchstart',function(e){
+  var t=e.changedTouches[0];touchX=t.clientX;touchY=t.clientY;
+},{passive:true});
+boardEl.addEventListener('touchend',function(e){
+  var t=e.changedTouches[0],dx=t.clientX-touchX,dy=t.clientY-touchY;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<24)return;
+  if(state.won)return;
+  if(Math.abs(dx)>Math.abs(dy)){moveBlank(0,dx>0?-1:1);}
+  else{moveBlank(dy>0?-1:1,0);}
+},{passive:true});
+
+/* ---------- 启动 ---------- */
+state.sceneUrl=scenes[state.theme];
+newGame();
+window.addEventListener('resize',function(){renderBoard(true);});
+
+/* 供自动化测试使用的调试接口 */
+window.__puzzle={
+  get state(){return state;},
+  get tiles(){return state.tiles;},
+  get blank(){return state.blank;},
+  get size(){return state.size;},
+  setBoard:function(arr){state.tiles=arr.slice();state.blank=arr.indexOf(state.size*state.size-1);state.won=false;renderBoard(true);},
+  moveBlank:moveBlank,
+  onTileClick:onTileClick,
+  newGame:newGame,
+  setSize:setSize,
+  setTheme:setTheme,
+  doHint:doHint,
+  isSolved:isSolved
+};
+})();
+</script>
+</body>
+</html>
