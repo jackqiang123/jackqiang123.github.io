@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>叠叠高大作战 · 游戏小站</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(180deg,#1b2a4a,#274b73 60%,#2c5364);min-height:100vh;color:#fff;touch-action:manipulation}
+  .top{max-width:480px;margin:0 auto;padding:12px 14px 0;display:flex;justify-content:space-between;align-items:center}
+  .top a{color:#a8d8ff;text-decoration:none;font-size:15px;font-weight:700}
+  .top .sound{border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.12);color:#fff;border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer}
+  .wrap{max-width:480px;margin:0 auto;padding:8px 14px 26px}
+  h1{text-align:center;font-size:26px;letter-spacing:2px;text-shadow:0 3px 14px rgba(0,0,0,.4)}
+  h1 span{font-size:15px;display:block;letter-spacing:1px;color:#bcd7ea;margin-top:4px;font-weight:400}
+  .hud{display:flex;gap:8px;margin:14px 0 10px}
+  .hud .box{flex:1;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);border-radius:12px;padding:8px 4px;text-align:center}
+  .hud .box b{display:block;font-size:21px;line-height:1.2}
+  .hud .box i{font-style:normal;font-size:11px;color:#bcd7ea}
+  .combo{color:#ffd32a}
+  .stage{position:relative;border-radius:18px;overflow:hidden;box-shadow:0 14px 34px rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.18)}
+  canvas{display:block;width:100%;height:auto;background:#87bfe8}
+  .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:rgba(10,25,45,.72);backdrop-filter:blur(2px);padding:20px;z-index:5}
+  .overlay.hidden{display:none}
+  .overlay .big{font-size:52px}
+  .overlay h2{font-size:26px;margin:10px 0 8px}
+  .overlay p{font-size:14px;line-height:1.9;color:#d7e6f2}
+  .overlay .score-line{font-size:18px;color:#ffd32a;font-weight:800;margin:6px 0}
+  .btn{display:inline-block;margin-top:14px;background:#ff9f43;color:#fff;border:none;border-radius:999px;padding:13px 34px;font-size:17px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(255,159,67,.5)}
+  .btn:active{transform:scale(.96)}
+  .btn.blue{background:#0984e3;box-shadow:0 6px 18px rgba(9,132,227,.5)}
+  .btn.ghost{background:rgba(255,255,255,.16);box-shadow:none;border:1px solid rgba(255,255,255,.4)}
+  .diffs{display:flex;gap:8px;margin-top:14px}
+  .diffs button{flex:1;border:2px solid rgba(255,255,255,.35);background:rgba(255,255,255,.1);color:#fff;border-radius:12px;padding:10px 4px;font-size:14px;font-weight:700;cursor:pointer}
+  .diffs button.on{border-color:#ffd32a;background:rgba(255,211,42,.22);color:#ffd32a}
+  .diffs button small{display:block;font-weight:400;font-size:11px;color:#cfe3f2;margin-top:2px}
+  .place-btn{width:100%;margin-top:12px;background:linear-gradient(180deg,#ff9f43,#e1701a);color:#fff;border:none;border-radius:16px;padding:17px 0;font-size:20px;font-weight:900;letter-spacing:4px;cursor:pointer;box-shadow:0 8px 22px rgba(225,112,26,.45)}
+  .place-btn:active{transform:scale(.98)}
+  .place-btn:disabled{opacity:.45;box-shadow:none}
+  .row-btns{display:flex;gap:10px;margin-top:10px}
+  .row-btns button{flex:1;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:12px;padding:12px 0;font-size:15px;font-weight:700;cursor:pointer}
+  .tips{text-align:center;color:#bcd7ea;font-size:12.5px;line-height:1.9;margin-top:12px}
+  .float-text{position:absolute;left:50%;top:32%;transform:translateX(-50%);font-size:30px;font-weight:900;color:#ffd32a;text-shadow:0 3px 12px rgba(0,0,0,.55);opacity:0;pointer-events:none;z-index:4;transition:opacity .15s}
+  .float-text.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="top">
+  <a href="../">← 回主页</a>
+  <button class="sound" id="soundBtn">🔊 音效开</button>
+</div>
+<div class="wrap">
+  <h1>🗼 叠叠高大作战<span>STACK TOWER · 方块叠得越高越好</span></h1>
+  <div class="hud">
+    <div class="box"><b id="scoreVal">0</b><i>分数</i></div>
+    <div class="box"><b id="layerVal">0</b><i>层数</i></div>
+    <div class="box"><b id="comboVal" class="combo">×0</b><i>完美连击</i></div>
+    <div class="box"><b id="bestVal">0</b><i>最高分</i></div>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="game" width="360" height="600"></canvas>
+    <div class="float-text" id="floatText"></div>
+
+    <div class="overlay" id="startOverlay">
+      <div class="big">🗼</div>
+      <h2>叠叠高大作战</h2>
+      <p>方块在塔顶左右滑动<br>点一下屏幕 / 按空格 / 点「放下」把它放下<br>叠出界的部分会掉下去，塔越叠越窄<br>放得越正越好：<b style="color:#ffd32a">完美</b> +20 分，连对 3 次塔变宽！</p>
+      <div class="diffs" id="diffs">
+        <button data-diff="easy">简单<small>宽塔 · 慢速</small></button>
+        <button data-diff="normal" class="on">普通<small>标准宽度</small></button>
+        <button data-diff="hard">困难<small>窄塔 · 快速</small></button>
+      </div>
+      <button class="btn" id="startBtn">开始叠塔</button>
+    </div>
+
+    <div class="overlay hidden" id="pauseOverlay">
+      <div class="big">⏸️</div>
+      <h2>已暂停</h2>
+      <p>塔还立着，等你回来继续叠</p>
+      <button class="btn blue" id="resumeBtn">继续</button>
+      <button class="btn ghost" id="restartBtn2">重新开始</button>
+    </div>
+
+    <div class="overlay hidden" id="overOverlay">
+      <div class="big">💥</div>
+      <h2>塔倒啦！</h2>
+      <div class="score-line" id="finalScore"></div>
+      <p id="finalDetail"></p>
+      <button class="btn" id="againBtn">再叠一次</button>
+      <button class="btn ghost" id="homeBtn">回主页</button>
+    </div>
+  </div>
+
+  <button class="place-btn" id="placeBtn" disabled>⬇ 放 下</button>
+  <div class="row-btns">
+    <button id="pauseBtn">⏸ 暂停</button>
+    <button id="restartBtn">🔄 重开</button>
+  </div>
+  <p class="tips">操作：点屏幕 / 空格 / ↓ 键放下 · P 暂停 · R 重开<br>完美判定：与下层偏差 ≤ 5 像素即完美；每 3 次完美连击塔宽 +10</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var W = 360, H = 600, BH = 26, GROUND_Y = 560;
+  var PERFECT_TOL = 5, GROW_EVERY = 3, GROW_PX = 10, MIN_W = 10;
+  var DIFFS = {
+    easy:   { w: 240, speed: 1.8, label: '简单' },
+    normal: { w: 200, speed: 2.2, label: '普通' },
+    hard:   { w: 160, speed: 2.8, label: '困难' }
+  };
+  var BEST_KEY = 'stackTowerBest';
+
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var scoreVal = document.getElementById('scoreVal');
+  var layerVal = document.getElementById('layerVal');
+  var comboVal = document.getElementById('comboVal');
+  var bestVal = document.getElementById('bestVal');
+  var floatText = document.getElementById('floatText');
+  var startOverlay = document.getElementById('startOverlay');
+  var pauseOverlay = document.getElementById('pauseOverlay');
+  var overOverlay = document.getElementById('overOverlay');
+  var placeBtn = document.getElementById('placeBtn');
+  var soundBtn = document.getElementById('soundBtn');
+
+  var state = 'ready'; // ready | playing | paused | over
+  var diff = 'normal';
+  var blocks = [];      // settled blocks, bottom-up: {x, w}
+  var moving = null;    // sliding block: {x, w, dir, speed}
+  var fallers = [];     // cut-off pieces: {x, y, w, vy, rot, vr, hue}
+  var particles = [];   // {x, y, vx, vy, life, color}
+  var score = 0, layers = 0, combo = 0, perfects = 0;
+  var best = 0;
+  var camY = 0, camTarget = 0;
+  var soundOn = true;
+  var audioCtx = null;
+  var clouds = [];
+  var floatTimer = null;
+  var overTimer = null;
+
+  try { best = parseInt(window.localStorage.getItem(BEST_KEY), 10) || 0; } catch (e) { best = 0; }
+  bestVal.textContent = best;
+
+  for (var ci = 0; ci < 6; ci++) {
+    clouds.push({ x: Math.random() * W, y: 40 + Math.random() * 260, s: 0.6 + Math.random() * 0.9, v: 0.08 + Math.random() * 0.15 });
+  }
+
+  function hueFor(n) { return (205 + n * 9) % 360; }
+
+  function beep(freq, dur, type, vol) {
+    if (!soundOn) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (!audioCtx) return;
+      var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = type || 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol || 0.12, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(); o.stop(audioCtx.currentTime + dur);
+    } catch (e) { /* 音频不可用时静默 */ }
+  }
+
+  function roundRectPath(c, x, y, w, h, r) {
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.lineTo(x + w - r, y);
+    c.quadraticCurveTo(x + w, y, x + w, y + r);
+    c.lineTo(x + w, y + h - r);
+    c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    c.lineTo(x + r, y + h);
+    c.quadraticCurveTo(x, y + h, x, y + h - r);
+    c.lineTo(x, y + r);
+    c.quadraticCurveTo(x, y, x + r, y);
+    c.closePath();
+  }
+
+  function drawBlock(c, x, y, w, hue, alpha) {
+    if (w <= 0) return;
+    if (alpha !== undefined) c.globalAlpha = alpha;
+    var g = c.createLinearGradient(x, y, x, y + BH);
+    g.addColorStop(0, 'hsl(' + hue + ',78%,66%)');
+    g.addColorStop(0.55, 'hsl(' + hue + ',72%,52%)');
+    g.addColorStop(1, 'hsl(' + hue + ',70%,42%)');
+    roundRectPath(c, x + 1, y + 1, w - 2, BH - 2, 6);
+    c.fillStyle = g; c.fill();
+    c.fillStyle = 'rgba(255,255,255,.35)';
+    roundRectPath(c, x + 4, y + 3, w - 8, 5, 3);
+    c.fill();
+    c.strokeStyle = 'rgba(0,0,0,.18)';
+    c.lineWidth = 1;
+    roundRectPath(c, x + 1, y + 1, w - 2, BH - 2, 6);
+    c.stroke();
+    if (alpha !== undefined) c.globalAlpha = 1;
+  }
+
+  function topBlock() { return blocks[blocks.length - 1]; }
+  function towerTopY() { return GROUND_Y - blocks.length * BH; }
+
+  function spawnMoving() {
+    var top = topBlock();
+    var speed = Math.min(DIFFS[diff].speed + layers * 0.10, 7.5);
+    moving = { x: 0, w: top.w, dir: 1, speed: speed, y: towerTopY() - BH };
+    // 随机从左或从右开始
+    if (Math.random() < 0.5) { moving.x = W - moving.w; moving.dir = -1; }
+  }
+
+  function updateHUD() {
+    scoreVal.textContent = score;
+    layerVal.textContent = layers;
+    comboVal.textContent = '×' + combo;
+    bestVal.textContent = best;
+  }
+
+  function showFloat(text) {
+    floatText.textContent = text;
+    floatText.classList.add('show');
+    if (floatTimer) clearTimeout(floatTimer);
+    floatTimer = setTimeout(function () { floatText.classList.remove('show'); }, 700);
+  }
+
+  function burst(x, y, hue, n) {
+    for (var i = 0; i < n; i++) {
+      particles.push({
+        x: x + Math.random() * 60 - 30, y: y,
+        vx: (Math.random() - 0.5) * 3.2, vy: -Math.random() * 3 - 0.5,
+        life: 1, color: 'hsl(' + hue + ',85%,65%)'
+      });
+    }
+  }
+
+  function startGame() {
+    var cfg = DIFFS[diff];
+    blocks = [{ x: (W - cfg.w) / 2, w: cfg.w }];
+    fallers = []; particles = [];
+    score = 0; layers = 0; combo = 0; perfects = 0;
+    camY = 0; camTarget = 0;
+    state = 'playing';
+    startOverlay.classList.add('hidden');
+    pauseOverlay.classList.add('hidden');
+    overOverlay.classList.add('hidden');
+    placeBtn.disabled = false;
+    spawnMoving();
+    updateHUD();
+    beep(520, 0.12, 'sine', 0.12);
+  }
+
+  function place() {
+    if (state !== 'playing' || !moving) return;
+    var top = topBlock();
+    var mx = moving.x, mw = moving.w;
+    var nx = Math.max(mx, top.x);
+    var nw = Math.min(mx + mw, top.x + top.w) - nx;
+    var perfect = Math.abs(mx - top.x) <= PERFECT_TOL;
+    var y = moving.y;
+
+    if (nw <= 0 || nw < MIN_W) {
+      // 完全没叠上：整块掉下去，游戏结束
+      fallers.push({ x: mx, y: y, w: mw, vy: 1.2, rot: 0, vr: (Math.random() - 0.5) * 0.08, hue: hueFor(layers + 1) });
+      moving = null;
+      state = 'over';
+      combo = 0;
+      beep(160, 0.35, 'sawtooth', 0.14);
+      updateHUD();
+      if (overTimer) clearTimeout(overTimer);
+      overTimer = setTimeout(showGameOver, 650);
+      return;
+    }
+
+    if (perfect) {
+      nx = top.x; nw = top.w;
+      combo++; perfects++;
+      score += 20;
+      showFloat(combo >= 2 ? '完美 ×' + combo + '！' : '完美！');
+      burst(nx + nw / 2, y, hueFor(layers + 1), 14);
+      beep(880, 0.12, 'sine', 0.14);
+      setTimeout(function () { beep(1174, 0.14, 'sine', 0.12); }, 70);
+      if (combo % GROW_EVERY === 0) {
+        nw = Math.min(nw + GROW_PX, DIFFS[diff].w);
+        showFloat('塔变宽啦！');
+      }
+    } else {
+      combo = 0;
+      score += 10;
+      beep(440, 0.08, 'sine', 0.1);
+      // 掉下去的边角
+      var cutW = mw - nw;
+      if (cutW > 0) {
+        var cutX = (mx < top.x) ? mx : (nx + nw);
+        fallers.push({ x: cutX, y: y, w: cutW, vy: 0.8, rot: 0, vr: (mx < top.x ? -1 : 1) * 0.03, hue: hueFor(layers + 1) });
+      }
+    }
+
+    blocks.push({ x: nx, w: nw });
+    layers = blocks.length - 1;
+    if (score > best) {
+      best = score;
+      try { window.localStorage.setItem(BEST_KEY, String(best)); } catch (e) {}
+    }
+    updateHUD();
+    camTarget = Math.max(0, (GROUND_Y - towerTopY()) - 220);
+    spawnMoving();
+  }
+
+  function showGameOver() {
+    placeBtn.disabled = true;
+    document.getElementById('finalScore').textContent = '分数 ' + score + ' · ' + layers + ' 层';
+    var d = '完美 ' + perfects + ' 次 · 最高分 ' + best;
+    if (score >= best && score > 0) d += ' 🎉 新纪录！';
+    document.getElementById('finalDetail').textContent = d;
+    overOverlay.classList.remove('hidden');
+    updateHUD();
+  }
+
+  function togglePause() {
+    if (state === 'playing') {
+      state = 'paused';
+      pauseOverlay.classList.remove('hidden');
+      placeBtn.disabled = true;
+    } else if (state === 'paused') {
+      state = 'playing';
+      pauseOverlay.classList.add('hidden');
+      placeBtn.disabled = false;
+    }
+  }
+
+  function step(dt) {
+    var f = dt / 16.7;
+    if (state === 'playing' && moving) {
+      moving.x += moving.dir * moving.speed * f;
+      if (moving.x <= 0) { moving.x = 0; moving.dir = 1; }
+      if (moving.x + moving.w >= W) { moving.x = W - moving.w; moving.dir = -1; }
+    }
+    for (var i = fallers.length - 1; i >= 0; i--) {
+      var fl = fallers[i];
+      fl.vy += 0.25 * f; fl.y += fl.vy * f; fl.rot += fl.vr * f;
+      if (fl.y > H + 60) fallers.splice(i, 1);
+    }
+    for (var j = particles.length - 1; j >= 0; j--) {
+      var p = particles[j];
+      p.x += p.vx * f; p.y += p.vy * f; p.vy += 0.12 * f; p.life -= 0.03 * f;
+      if (p.life <= 0) particles.splice(j, 1);
+    }
+    for (var k = 0; k < clouds.length; k++) {
+      var cl = clouds[k];
+      cl.x += cl.v * f;
+      if (cl.x > W + 60) { cl.x = -60; cl.y = 30 + Math.random() * 280; }
+    }
+    camY += (camTarget - camY) * 0.08 * f;
+    if (Math.abs(camTarget - camY) < 0.5) camY = camTarget;
+  }
+
+  function draw() {
+    // 天空随高度渐变：越叠越高，天色越深
+    var skyTop = 'hsl(' + (210 - Math.min(layers, 40)) + ',72%,' + Math.max(52 - layers * 0.35, 26) + '%)';
+    var skyBot = 'hsl(' + (200 - Math.min(layers, 40)) + ',65%,' + Math.max(72 - layers * 0.4, 40) + '%)';
+    var g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, skyTop);
+    g.addColorStop(1, skyBot);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    // 云
+    ctx.fillStyle = 'rgba(255,255,255,.85)';
+    for (var i = 0; i < clouds.length; i++) {
+      var cl = clouds[i];
+      var cy = cl.y - camY * 0.35;
+      if (cy < -40 || cy > H + 40) continue;
+      ctx.beginPath();
+      ctx.ellipse(cl.x, cy, 34 * cl.s, 13 * cl.s, 0, 0, Math.PI * 2);
+      ctx.ellipse(cl.x + 22 * cl.s, cy + 4, 24 * cl.s, 10 * cl.s, 0, 0, Math.PI * 2);
+      ctx.ellipse(cl.x - 22 * cl.s, cy + 5, 20 * cl.s, 9 * cl.s, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 高度刻度（每 10 层）
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'left';
+    for (var m = 10; m <= layers + 10; m += 10) {
+      var my = GROUND_Y - m * BH - camY;
+      if (my < 10 || my > H - 10) continue;
+      ctx.strokeStyle = 'rgba(255,255,255,.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(W - 34, my); ctx.lineTo(W - 8, my); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.85)';
+      ctx.fillText(m + '层', W - 34, my - 5);
+    }
+
+    // 地面
+    var gy = GROUND_Y - camY;
+    if (gy < H) {
+      ctx.fillStyle = '#5fae5a';
+      ctx.fillRect(0, gy, W, H - gy);
+      ctx.fillStyle = '#4c9448';
+      ctx.fillRect(0, gy, W, 6);
+      ctx.fillStyle = '#3f7d3c';
+      for (var gx = 12; gx < W; gx += 34) {
+        ctx.beginPath();
+        ctx.moveTo(gx, gy); ctx.lineTo(gx + 5, gy - 9); ctx.lineTo(gx + 10, gy);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+
+    // 已叠好的塔
+    for (var b = 0; b < blocks.length; b++) {
+      var blk = blocks[b];
+      var by = GROUND_Y - (b + 1) * BH - camY;
+      if (by > H || by < -BH) continue;
+      drawBlock(ctx, blk.x, by, blk.w, hueFor(b));
+    }
+
+    // 正在滑动的方块 + 瞄准虚线
+    if (moving && state !== 'over') {
+      var top = topBlock();
+      ctx.strokeStyle = 'rgba(255,255,255,.55)';
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(moving.x + moving.w / 2, moving.y - camY);
+      ctx.lineTo(moving.x + moving.w / 2, GROUND_Y - blocks.length * BH - camY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      drawBlock(ctx, moving.x, moving.y - camY, moving.w, hueFor(layers + 1));
+      // 与下层对齐时给个小提示
+      if (Math.abs(moving.x - top.x) <= PERFECT_TOL) {
+        ctx.fillStyle = '#ffd32a';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('★ 完美位置', moving.x + moving.w / 2, moving.y - camY - 8);
+      }
+    }
+
+    // 掉落的碎块
+    for (var f = 0; f < fallers.length; f++) {
+      var fl = fallers[f];
+      ctx.save();
+      ctx.translate(fl.x + fl.w / 2, fl.y - camY + BH / 2);
+      ctx.rotate(fl.rot);
+      drawBlock(ctx, -fl.w / 2, -BH / 2, fl.w, fl.hue);
+      ctx.restore();
+    }
+
+    // 粒子
+    for (var p = 0; p < particles.length; p++) {
+      var pt = particles[p];
+      ctx.globalAlpha = Math.max(pt.life, 0);
+      ctx.fillStyle = pt.color;
+      ctx.fillRect(pt.x, pt.y - camY, 5, 5);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  var lastT = 0;
+  function loop(t) {
+    var dt = t - lastT;
+    lastT = t;
+    if (!dt || dt > 100) dt = 16.7;
+    step(dt);
+    draw();
+    window.requestAnimationFrame(loop);
+  }
+
+  // ---- 事件 ----
+  document.getElementById('startBtn').addEventListener('click', startGame);
+  document.getElementById('againBtn').addEventListener('click', startGame);
+  document.getElementById('restartBtn').addEventListener('click', function () { if (state !== 'ready') startGame(); });
+  document.getElementById('restartBtn2').addEventListener('click', startGame);
+  document.getElementById('resumeBtn').addEventListener('click', togglePause);
+  document.getElementById('pauseBtn').addEventListener('click', togglePause);
+  document.getElementById('homeBtn').addEventListener('click', function () { window.location.href = '../'; });
+  placeBtn.addEventListener('click', function (e) { e.stopPropagation(); place(); });
+  soundBtn.addEventListener('click', function () {
+    soundOn = !soundOn;
+    soundBtn.textContent = soundOn ? '🔊 音效开' : '🔇 音效关';
+  });
+  document.getElementById('diffs').addEventListener('click', function (e) {
+    var btn = e.target.closest('button[data-diff]');
+    if (!btn) return;
+    diff = btn.getAttribute('data-diff');
+    var all = document.querySelectorAll('#diffs button');
+    for (var i = 0; i < all.length; i++) all[i].classList.remove('on');
+    btn.classList.add('on');
+  });
+
+  // 点舞台放下（避开覆盖层按钮）
+  document.getElementById('stage').addEventListener('click', function (e) {
+    if (e.target.closest('.overlay') || e.target.closest('button')) return;
+    place();
+  });
+  canvas.addEventListener('touchstart', function (e) {
+    e.preventDefault();
+    place();
+  }, { passive: false });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === ' ' || e.key === 'ArrowDown' || e.key === 'Enter') {
+      e.preventDefault();
+      if (state === 'ready') startGame();
+      else if (state === 'over') startGame();
+      else place();
+    } else if (e.key === 'p' || e.key === 'P') {
+      togglePause();
+    } else if (e.key === 'r' || e.key === 'R') {
+      if (state !== 'ready') startGame();
+    }
+  });
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden && state === 'playing') togglePause();
+  });
+
+  // 初始静态画面：画一座小塔当背景
+  blocks = [{ x: (W - DIFFS.normal.w) / 2, w: DIFFS.normal.w }];
+  draw();
+  updateHUD();
+
+  window.requestAnimationFrame(loop);
+
+  // 供自动化测试的调试接口
+  window.__stack = {
+    get state() { return state; },
+    get blocks() { return blocks; },
+    get moving() { return moving; },
+    get score() { return score; },
+    get layers() { return layers; },
+    get combo() { return combo; },
+    get perfects() { return perfects; },
+    get best() { return best; },
+    get diff() { return diff; },
+    get fallers() { return fallers; },
+    get camTarget() { return camTarget; },
+    start: startGame,
+    place: place,
+    step: step,
+    togglePause: togglePause,
+    setDiff: function (d) { diff = d; },
+    setMovingX: function (x) { if (moving) moving.x = x; },
+    setMoving: function (x, w) { if (moving) { moving.x = x; moving.w = w; } }
+  };
+})();
+</script>
+</body>
+</html>
