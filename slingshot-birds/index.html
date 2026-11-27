@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>弹弓小鸟 · 游戏小站</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(180deg,#7ec8e3 0%,#aee3f5 55%,#c9ecd9 100%);min-height:100vh;color:#2d3436}
+  .topbar{max-width:520px;margin:0 auto;padding:10px 14px 0;display:flex;align-items:center;justify-content:space-between}
+  .topbar a{color:#0984e3;text-decoration:none;font-weight:700;font-size:15px}
+  .topbar .title{font-size:17px;font-weight:800}
+  .wrap{max-width:520px;margin:0 auto;padding:6px 12px 26px}
+  .hud{display:flex;gap:8px;margin:8px 0}
+  .pill{flex:1;background:rgba(255,255,255,.9);border-radius:14px;padding:8px 4px;text-align:center;box-shadow:0 3px 10px rgba(0,0,0,.12)}
+  .pill .lab{font-size:11px;color:#636e72}
+  .pill .val{font-size:19px;font-weight:800;line-height:1.2}
+  .stage{position:relative;border-radius:18px;overflow:hidden;box-shadow:0 10px 28px rgba(0,0,0,.28);background:#8fd3f4}
+  canvas{display:block;width:100%;height:auto;touch-action:none;cursor:grab}
+  canvas.aiming{cursor:grabbing}
+  .hintbar{text-align:center;font-size:13px;color:#4a6572;padding:8px 2px 0;line-height:1.6;min-height:36px}
+  .birds{display:flex;justify-content:center;gap:10px;margin:8px 0 4px}
+  .birdslot{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;background:rgba(255,255,255,.85);box-shadow:0 3px 8px rgba(0,0,0,.15)}
+  .birdslot.used{opacity:.28;filter:grayscale(1)}
+  .birdslot.next{outline:3px solid #fdcb6e;outline-offset:2px}
+  .btnrow{display:flex;gap:10px;margin-top:10px}
+  button{flex:1;border:none;border-radius:14px;padding:14px 6px;font-size:16px;font-weight:800;color:#fff;background:#0984e3;box-shadow:0 4px 0 #065a9e;cursor:pointer;font-family:inherit}
+  button:active{transform:translateY(3px);box-shadow:0 1px 0 #065a9e}
+  button.secondary{background:#636e72;box-shadow:0 4px 0 #2d3436}
+  button.secondary:active{box-shadow:0 1px 0 #2d3436}
+  button.warn{background:#e17055;box-shadow:0 4px 0 #a83c22}
+  button.warn:active{box-shadow:0 1px 0 #a83c22}
+  button:disabled{opacity:.45}
+  .levels{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+  .levels button{flex:0 0 auto;width:52px;height:52px;padding:0;font-size:17px;border-radius:50%;background:#fff;color:#2d3436;box-shadow:0 3px 0 #b2bec3}
+  .levels button.done{background:#00b894;color:#fff;box-shadow:0 3px 0 #00755c}
+  .levels button.locked{opacity:.45}
+  .levels button.cur{outline:3px solid #fdcb6e}
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:5}
+  .overlay.show{display:flex}
+  .panel{background:#fff;border-radius:20px;padding:24px 20px;text-align:center;width:82%;max-width:340px;box-shadow:0 16px 40px rgba(0,0,0,.4)}
+  .panel h2{font-size:24px;margin-bottom:6px}
+  .panel .stars{font-size:34px;letter-spacing:4px;margin:6px 0}
+  .panel p{font-size:14px;color:#636e72;line-height:1.8}
+  .panel .score{font-size:26px;font-weight:800;color:#e17055}
+  .panel .btnrow{margin-top:16px}
+  .howto{background:rgba(255,255,255,.85);border-radius:14px;padding:12px 14px;margin-top:14px;font-size:13px;line-height:1.9;color:#4a6572}
+  .howto b{color:#2d3436}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="../">← 回主页</a>
+  <div class="title">🎯 弹弓小鸟</div>
+  <div style="width:64px"></div>
+</div>
+<div class="wrap">
+  <div class="hud">
+    <div class="pill"><div class="lab">关卡</div><div class="val" id="hudLevel">第 1 关</div></div>
+    <div class="pill"><div class="lab">分数</div><div class="val" id="hudScore">0</div></div>
+    <div class="pill"><div class="lab">最佳</div><div class="val" id="hudBest">0</div></div>
+  </div>
+
+  <div class="stage">
+    <canvas id="cv" width="480" height="720"></canvas>
+    <div class="overlay" id="overlay">
+      <div class="panel" id="panel"></div>
+    </div>
+  </div>
+
+  <div class="hintbar" id="hint">按住小鸟往后拉，松手发射！<br>飞行中点一下屏幕触发小鸟绝技</div>
+  <div class="birds" id="birds"></div>
+
+  <div class="btnrow">
+    <button id="btnRestart" class="warn">🔄 重开本关</button>
+    <button id="btnSound" class="secondary">🔊 音效：开</button>
+  </div>
+  <div class="levels" id="levels"></div>
+
+  <div class="howto">
+    <b>玩法：</b>拖动弹弓上的小鸟瞄准，松手发射，撞塌木头/玻璃/石头建筑，消灭所有绿猪过关。<br>
+    <b>小鸟绝技：</b>🔴 红鸟结实耐撞 · 🟡 黄鸟点一下加速冲刺 · 🔵 蓝鸟点一下分裂成三只。<br>
+    <b>计分：</b>绿猪 +5000，撞碎建筑 +500，剩余小鸟每只 +10000。石头最硬，要多撞几下。
+  </div>
+</div>
+
+<script>
+'use strict';
+/* 弹弓小鸟：原创物理弹弓游戏。单文件、零依赖、Canvas 绘制。 */
+var W = 480, H = 720, GROUND_Y = 660, GRAV = 1500;
+var cv = document.getElementById('cv');
+var ctx = cv.getContext('2d');
+var hudScore = document.getElementById('hudScore');
+var hudLevel = document.getElementById('hudLevel');
+var hudBest = document.getElementById('hudBest');
+var hintEl = document.getElementById('hint');
+var birdsEl = document.getElementById('birds');
+var levelsEl = document.getElementById('levels');
+var overlay = document.getElementById('overlay');
+var panel = document.getElementById('panel');
+
+var ANCHOR = { x: 100, y: 548 };   /* 弹弓支点 */
+var MAX_PULL = 100;              /* 最大拉距 */
+var POWER = 7.0;                 /* 发射力度系数 */
+
+var BIRD_TYPES = {
+  red:    { emoji: '🔴', r: 19, color: '#e74c3c', dark: '#c0392b', ability: 'none' },
+  yellow: { emoji: '🟡', r: 17, color: '#f1c40f', dark: '#d4a017', ability: 'dash' },
+  blue:   { emoji: '🔵', r: 14, color: '#3498db', dark: '#2471a3', ability: 'split' }
+};
+
+/* 关卡数据：blocks [x, y, w, h, 材质]，y 为顶部；pigs [x, y] 为圆心 */
+var LEVELS = [
+  { name: '第 1 关', birds: ['red', 'red', 'yellow'],
+    blocks: [[350,560,20,100,'wood'],[410,560,20,100,'wood'],[340,540,100,20,'wood']],
+    pigs: [[380, 644]] },
+  { name: '第 2 关', birds: ['red', 'yellow', 'blue', 'red'],
+    blocks: [[320,580,20,80,'wood'],[370,580,20,80,'wood'],[310,560,90,20,'wood'],
+             [420,600,20,60,'stone'],[460,600,20,60,'stone'],[410,580,90,20,'wood']],
+    pigs: [[345, 544], [445, 644]] },
+  { name: '第 3 关', birds: ['red', 'yellow', 'blue', 'red'],
+    blocks: [[300,600,24,60,'stone'],[340,600,24,60,'stone'],[380,600,24,60,'stone'],[420,600,24,60,'stone'],
+             [296,580,152,20,'wood'],
+             [330,520,20,60,'wood'],[400,520,20,60,'wood'],[320,500,120,20,'wood']],
+    pigs: [[312, 644], [388, 644], [368, 484]] },
+  { name: '第 4 关', birds: ['red', 'yellow', 'blue', 'red', 'yellow'],
+    blocks: [[300,580,20,80,'glass'],[350,580,20,80,'glass'],[290,560,110,20,'wood'],
+             [410,600,20,60,'stone'],[450,600,20,60,'stone'],[400,580,90,20,'wood']],
+    pigs: [[325, 644], [325, 544], [435, 644]] },
+  { name: '第 5 关', birds: ['red', 'yellow', 'blue', 'red', 'yellow'],
+    blocks: [[290,600,24,60,'stone'],[330,600,24,60,'stone'],[370,600,24,60,'stone'],[410,600,24,60,'stone'],[440,600,24,60,'stone'],
+             [286,580,180,20,'wood'],
+             [320,520,20,60,'glass'],[400,520,20,60,'glass'],[310,500,130,20,'wood'],
+             [360,440,20,60,'stone'],[350,420,80,20,'wood']],
+    pigs: [[310, 644], [390, 644], [360, 564], [365, 404]] }
+];
+var MAT = {
+  wood:  { hp: 1, color: '#b07a45', dark: '#8a5a2b', breakSpeed: 230 },
+  glass: { hp: 1, color: '#aed6f1', dark: '#7fb3d5', breakSpeed: 140 },
+  stone: { hp: 2, color: '#95a5a6', dark: '#6c7a7a', breakSpeed: 430 }
+};
+var STAR_SCORE = [15000, 26000, 38000]; /* 1/2/3 星门槛（通关分，含剩余小鸟奖励） */
+
+var state = {
+  levelIdx: 0, score: 0, phase: 'aim', /* aim | flying | settling | over */
+  birdsQueue: [], birdIdx: 0,
+  bird: null,      /* 飞行中的主鸟 */
+  extraBirds: [],  /* 蓝鸟分裂出的额外鸟 */
+  blocks: [], pigs: [], particles: [],
+  pull: null,      /* 正在拉弓的偏移 {dx,dy} */
+  abilityUsed: false, settleTimer: 0, flyTimer: 0,
+  sound: true, shake: 0, clouds: []
+};
+for (var ci = 0; ci < 5; ci++) state.clouds.push({ x: Math.random() * W, y: 40 + Math.random() * 160, s: 0.6 + Math.random() * 0.8, v: 6 + Math.random() * 8 });
+
+/* ---------- 存档 ---------- */
+function loadSave() {
+  try { return JSON.parse(localStorage.getItem('slingshot-birds-save') || '{}'); } catch (e) { return {}; }
+}
+function storeSave(s) { try { localStorage.setItem('slingshot-birds-save', JSON.stringify(s)); } catch (e) {} }
+var save = loadSave();
+function bestFor(i) { return (save['best' + i] || 0); }
+function starsFor(i) { return (save['stars' + i] || 0); }
+function unlocked(i) { return i === 0 || starsFor(i - 1) > 0; }
+
+/* ---------- 音效 ---------- */
+var AC = null;
+function beep(freq, dur, type, vol) {
+  if (!state.sound) return;
+  try {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol || 0.12, AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
+    o.connect(g); g.connect(AC.destination);
+    o.start(); o.stop(AC.currentTime + dur);
+  } catch (e) {}
+}
+function sfx(name) {
+  if (name === 'launch') { beep(300, 0.15, 'square', 0.10); beep(520, 0.12, 'sine', 0.10); }
+  else if (name === 'hit') beep(140, 0.08, 'square', 0.10);
+  else if (name === 'break') { beep(500, 0.1, 'triangle', 0.12); beep(760, 0.14, 'triangle', 0.10); }
+  else if (name === 'pop') { beep(880, 0.1, 'sine', 0.14); beep(1320, 0.16, 'sine', 0.12); }
+  else if (name === 'win') { [523, 659, 784, 1046].forEach(function (f, i) { setTimeout(function () { beep(f, 0.22, 'sine', 0.14); }, i * 130); }); }
+  else if (name === 'lose') { [400, 320, 240].forEach(function (f, i) { setTimeout(function () { beep(f, 0.2, 'sine', 0.12); }, i * 150); }); }
+}
+
+/* ---------- 关卡 ---------- */
+function loadLevel(idx) {
+  var L = LEVELS[idx];
+  state.levelIdx = idx;
+  state.score = 0;
+  state.phase = 'aim';
+  state.birdsQueue = L.birds.slice();
+  state.birdIdx = 0;
+  state.bird = null;
+  state.extraBirds = [];
+  state.particles = [];
+  state.pull = null;
+  state.abilityUsed = false;
+  state.settleTimer = 0;
+  state.flyTimer = 0;
+  state.blocks = L.blocks.map(function (b) {
+    return { x: b[0], y: b[1], w: b[2], h: b[3], mat: b[4], hp: MAT[b[4]].hp, dyn: false, vx: 0, vy: 0, fallStart: 0 };
+  });
+  state.pigs = L.pigs.map(function (p) {
+    return { x: p[0], y: p[1], r: 16, alive: true, dyn: false, vy: 0, fallStart: 0, hit: 0 };
+  });
+  overlay.classList.remove('show');
+  hintEl.innerHTML = '按住小鸟往后拉，松手发射！<br>飞行中点一下屏幕触发小鸟绝技';
+  renderHud(); renderBirds(); renderLevels();
+}
+
+function currentBirdType() { return state.birdsQueue[state.birdIdx]; }
+function slingBirdPos() {
+  if (state.pull) return { x: ANCHOR.x + state.pull.dx, y: ANCHOR.y + state.pull.dy };
+  return { x: ANCHOR.x, y: ANCHOR.y };
+}
+
+function launch() {
+  var p = slingBirdPos();
+  var vx = (ANCHOR.x - p.x) * POWER, vy = (ANCHOR.y - p.y) * POWER;
+  var sp = Math.hypot(vx, vy);
+  if (sp < 60) { state.pull = null; return; } /* 拉得太小，取消 */
+  var type = currentBirdType();
+  state.bird = { type: type, x: p.x, y: p.y, vx: vx, vy: vy, r: BIRD_TYPES[type].r, alive: true, rest: 0 };
+  state.phase = 'flying';
+  state.flyTimer = 0;
+  state.pull = null;
+  state.abilityUsed = false;
+  sfx('launch');
+  hintEl.textContent = abilityHint(type);
+  renderBirds();
+}
+function abilityHint(type) {
+  if (type === 'yellow') return '黄鸟飞行中：点一下屏幕，加速冲刺！';
+  if (type === 'blue') return '蓝鸟飞行中：点一下屏幕，分裂成三只！';
+  return '红鸟已出发，撞塌建筑、消灭绿猪！';
+}
+
+function useAbility() {
+  if (state.phase !== 'flying' || !state.bird || !state.bird.alive || state.abilityUsed) return;
+  var b = state.bird;
+  if (b.type === 'yellow') {
+    var sp = Math.hypot(b.vx, b.vy) || 1;
+    b.vx = b.vx / sp * 950; b.vy = b.vy / sp * 950;
+    state.abilityUsed = true; sfx('launch');
+    burst(b.x, b.y, '#f1c40f', 8);
+  } else if (b.type === 'blue') {
+    var base = Math.atan2(b.vy, b.vx);
+    [-0.35, 0.35].forEach(function (da) {
+      var nb = { type: 'blue', x: b.x, y: b.y, vx: Math.cos(base + da) * 620, vy: Math.sin(base + da) * 620, r: 14, alive: true, rest: 0 };
+      state.extraBirds.push(nb);
+    });
+    state.abilityUsed = true; sfx('launch');
+    burst(b.x, b.y, '#3498db', 8);
+  }
+  hintEl.textContent = '绝技已用！';
+}
+
+function nextBirdOrEnd() {
+  state.birdIdx++;
+  state.extraBirds = [];
+  state.bird = null;
+  if (state.pigs.every(function (p) { return !p.alive; })) { winLevel(); return; }
+  if (state.birdIdx >= state.birdsQueue.length) { loseLevel(); return; }
+  state.phase = 'aim';
+  hintEl.innerHTML = '按住小鸟往后拉，松手发射！<br>飞行中点一下屏幕触发小鸟绝技';
+  renderBirds();
+}
+
+function winLevel() {
+  state.phase = 'over';
+  var bonus = (state.birdsQueue.length - state.birdIdx) * 10000;
+  state.score += bonus;
+  var stars = 1;
+  if (state.score >= STAR_SCORE[2]) stars = 3;
+  else if (state.score >= STAR_SCORE[1]) stars = 2;
+  if (state.score > bestFor(state.levelIdx)) save['best' + state.levelIdx] = state.score;
+  if (stars > starsFor(state.levelIdx)) save['stars' + state.levelIdx] = stars;
+  storeSave(save);
+  sfx('win');
+  renderHud(); renderLevels();
+  var next = state.levelIdx + 1;
+  panel.innerHTML = '<h2>🎉 过关啦！</h2><div class="stars">' + '⭐'.repeat(stars) + '☆'.repeat(3 - stars) + '</div>' +
+    '<p>剩余小鸟奖励 +' + bonus + ' 分</p><p class="score">' + state.score + ' 分</p>' +
+    '<p>本关最佳：' + bestFor(state.levelIdx) + ' 分</p>' +
+    '<div class="btnrow">' +
+    '<button onclick="window.__sling.replay()">🔄 再玩一次</button>' +
+    (next < LEVELS.length ? '<button onclick="window.__sling.play(' + next + ')">下一关 →</button>' : '<button onclick="window.__sling.play(0)">回到第 1 关</button>') +
+    '</div>';
+  overlay.classList.add('show');
+}
+
+function loseLevel() {
+  state.phase = 'over';
+  sfx('lose');
+  var left = state.pigs.filter(function (p) { return p.alive; }).length;
+  panel.innerHTML = '<h2>😢 小鸟用完啦</h2><p>还剩 ' + left + ' 只绿猪没消灭<br>再试一次，瞄准建筑的薄弱处！</p>' +
+    '<p class="score">' + state.score + ' 分</p>' +
+    '<div class="btnrow"><button onclick="window.__sling.replay()">🔄 再试一次</button>' +
+    '<button class="secondary" onclick="window.__sling.showLevels()">选关</button></div>';
+  overlay.classList.add('show');
+}
+
+/* ---------- 物理 ---------- */
+function burst(x, y, color, n) {
+  for (var i = 0; i < n; i++) {
+    state.particles.push({ x: x, y: y, vx: (Math.random() - 0.5) * 360, vy: -Math.random() * 300 - 40, life: 0.6 + Math.random() * 0.4, color: color, r: 3 + Math.random() * 4 });
+  }
+}
+function damageBlock(bl, speed, fromBird) {
+  if (bl.hp <= 0) return;
+  var need = MAT[bl.mat].breakSpeed;
+  if (speed >= need) {
+    bl.hp -= 1;
+    if (bl.hp <= 0) {
+      state.score += 500;
+      burst(bl.x + bl.w / 2, bl.y + bl.h / 2, MAT[bl.mat].color, 10);
+      sfx('break');
+      state.shake = 5;
+      state.blocks = state.blocks.filter(function (b) { return b !== bl; });
+      renderHud();
+      return;
+    }
+    sfx('hit');
+  }
+  if (fromBird && speed > 160) {
+    bl.dyn = true;
+    bl.vx = fromBird.vx * 0.25; bl.vy = -Math.abs(fromBird.vy) * 0.15 - 60;
+  }
+}
+function popPig(pig) {
+  if (!pig.alive) return;
+  pig.alive = false;
+  state.score += 5000;
+  burst(pig.x, pig.y, '#58d68d', 14);
+  sfx('pop');
+  state.shake = 6;
+  renderHud();
+}
+function blockSupported(bl) {
+  if (bl.y + bl.h >= GROUND_Y - 1) return true;
+  for (var i = 0; i < state.blocks.length; i++) {
+    var o = state.blocks[i];
+    if (o === bl || o.hp <= 0) continue;
+    if (Math.abs(o.y - (bl.y + bl.h)) <= 3 && o.x < bl.x + bl.w - 4 && o.x + o.w > bl.x + 4) return true;
+  }
+  return false;
+}
+function stepBird(b, dt) {
+  if (!b.alive) return;
+  b.vy += GRAV * dt;
+  b.x += b.vx * dt;
+  b.y += b.vy * dt;
+  /* 地面 */
+  if (b.y + b.r > GROUND_Y) {
+    b.y = GROUND_Y - b.r;
+    if (Math.abs(b.vy) > 120) sfx('hit');
+    b.vy = -b.vy * 0.32; b.vx *= 0.7;
+    if (Math.abs(b.vy) < 40) b.vy = 0;
+  }
+  /* 在地面上滚动摩擦，停稳 */
+  if (b.y + b.r >= GROUND_Y - 0.5 && b.vy === 0) {
+    b.vx *= Math.max(0, 1 - 3 * dt);
+    if (Math.abs(b.vx) < 12) b.vx = 0;
+  }
+  if (b.x < -60 || b.x > W + 60 || b.y > H + 40) { b.alive = false; return; }
+  var sp = Math.hypot(b.vx, b.vy);
+  /* 撞建筑 */
+  for (var i = state.blocks.length - 1; i >= 0; i--) {
+    var bl = state.blocks[i];
+    if (!bl) continue;
+    var cx = Math.max(bl.x, Math.min(b.x, bl.x + bl.w));
+    var cy = Math.max(bl.y, Math.min(b.y, bl.y + bl.h));
+    var dx = b.x - cx, dy = b.y - cy;
+    var d = Math.hypot(dx, dy);
+    if (d < b.r) {
+      var imp = sp;
+      damageBlock(bl, imp, b);
+      var nx = d > 0.01 ? dx / d : 0, ny = d > 0.01 ? dy / d : -1;
+      b.x = cx + nx * (b.r + 0.5); b.y = cy + ny * (b.r + 0.5);
+      var vn = b.vx * nx + b.vy * ny;
+      if (vn < 0) { b.vx -= 1.32 * vn * nx; b.vy -= 1.32 * vn * ny; b.vx *= 0.92; b.vy *= 0.92; }
+      if (imp > 200) sfx('hit');
+    }
+  }
+  /* 撞绿猪 */
+  for (var j = 0; j < state.pigs.length; j++) {
+    var pg = state.pigs[j];
+    if (!pg.alive) continue;
+    var ddx = b.x - pg.x, ddy = b.y - pg.y;
+    if (Math.hypot(ddx, ddy) < b.r + pg.r && sp > 150) popPig(pg);
+  }
+  if (sp < 28) b.rest += dt; else b.rest = 0;
+}
+function stepBlocks(dt) {
+  state.blocks.forEach(function (bl) {
+    if (!bl.dyn) {
+      if (!blockSupported(bl)) { bl.dyn = true; bl.vy = 0; bl.fallStart = bl.y; }
+      return;
+    }
+    bl.vy += GRAV * dt;
+    bl.x += bl.vx * dt;
+    bl.y += bl.vy * dt;
+    /* 落地 */
+    if (bl.y + bl.h >= GROUND_Y) {
+      bl.y = GROUND_Y - bl.h; bl.vy = 0; bl.vx = 0; bl.dyn = false;
+      return;
+    }
+    /* 落到别的建筑上 */
+    for (var i = 0; i < state.blocks.length; i++) {
+      var o = state.blocks[i];
+      if (o === bl || o.dyn) continue;
+      if (bl.vy > 0 && bl.x + bl.w > o.x + 2 && bl.x < o.x + o.w - 2 &&
+          bl.y + bl.h >= o.y && bl.y + bl.h <= o.y + 14) {
+        bl.y = o.y - bl.h; bl.vy = 0; bl.vx = 0; bl.dyn = false;
+      }
+    }
+    /* 砸到绿猪 */
+    state.pigs.forEach(function (pg) {
+      if (!pg.alive) return;
+      if (bl.x < pg.x + pg.r && bl.x + bl.w > pg.x - pg.r && bl.y < pg.y + pg.r && bl.y + bl.h > pg.y - pg.r && Math.abs(bl.vy) > 120) popPig(pg);
+    });
+  });
+}
+function stepPigs(dt) {
+  state.pigs.forEach(function (pg) {
+    if (!pg.alive) return;
+    if (!pg.dyn) {
+      /* 猪脚下没支撑就掉下来 */
+      var supported = pg.y + pg.r >= GROUND_Y - 1;
+      if (!supported) {
+        for (var i = 0; i < state.blocks.length; i++) {
+          var bl = state.blocks[i];
+          if (Math.abs(bl.y - (pg.y + pg.r)) <= 3 && bl.x < pg.x && bl.x + bl.w > pg.x) { supported = true; break; }
+        }
+      }
+      if (!supported) { pg.dyn = true; pg.vy = 0; pg.fallStart = pg.y; }
+      return;
+    }
+    pg.vy += GRAV * dt;
+    pg.y += pg.vy * dt;
+    var landed = false;
+    if (pg.y + pg.r >= GROUND_Y) { pg.y = GROUND_Y - pg.r; landed = true; }
+    else {
+      for (var i = 0; i < state.blocks.length; i++) {
+        var bl2 = state.blocks[i];
+        if (pg.vy > 0 && bl2.x < pg.x && bl2.x + bl2.w > pg.x && pg.y + pg.r >= bl2.y && pg.y + pg.r <= bl2.y + 12) {
+          pg.y = bl2.y - pg.r; landed = true; break;
+        }
+      }
+    }
+    if (landed) {
+      if (pg.y - pg.fallStart > 130) popPig(pg);
+      pg.dyn = false; pg.vy = 0;
+    }
+  });
+}
+function step(dt) {
+  state.clouds.forEach(function (c) { c.x += c.v * dt; if (c.x > W + 60) c.x = -60; });
+  state.particles.forEach(function (p) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 900 * dt; p.life -= dt; });
+  state.particles = state.particles.filter(function (p) { return p.life > 0; });
+  if (state.shake > 0) state.shake = Math.max(0, state.shake - dt * 22);
+
+  if (state.phase === 'flying' || state.phase === 'settling') {
+    state.flyTimer += dt;
+    if (state.bird) stepBird(state.bird, dt);
+    state.extraBirds.forEach(function (b) { stepBird(b, dt); });
+    state.extraBirds = state.extraBirds.filter(function (b) { return b.alive; });
+    stepBlocks(dt);
+    stepPigs(dt);
+    var allBirds = [];
+    if (state.bird && state.bird.alive) allBirds.push(state.bird);
+    state.extraBirds.forEach(function (b) { if (b.alive) allBirds.push(b); });
+    var moving = allBirds.length > 0;
+    var settled = allBirds.every(function (b) { return b.rest > 0.6; });
+    var anyDyn = state.blocks.some(function (b) { return b.dyn; }) || state.pigs.some(function (p) { return p.dyn; });
+    if (state.phase === 'flying' && (settled || !moving || state.flyTimer > 7)) state.phase = 'settling';
+    if (state.phase === 'settling') {
+      state.settleTimer += dt;
+      if (!anyDyn && (state.settleTimer > 0.9 || !moving || state.flyTimer > 8)) {
+        state.settleTimer = 0;
+        nextBirdOrEnd();
+      }
+    }
+  }
+}
+
+/* ---------- 绘制 ---------- */
+function drawBirdShape(x, y, r, type, angle) {
+  var t = BIRD_TYPES[type];
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle || 0);
+  /* 尾巴 */
+  ctx.fillStyle = t.dark;
+  ctx.beginPath(); ctx.moveTo(-r * 0.7, -r * 0.2); ctx.lineTo(-r * 1.5, -r * 0.7); ctx.lineTo(-r * 1.3, 0); ctx.lineTo(-r * 1.55, r * 0.5); ctx.lineTo(-r * 0.7, r * 0.3); ctx.closePath(); ctx.fill();
+  /* 身体 */
+  var g = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.2, 0, 0, r * 1.1);
+  g.addColorStop(0, '#fff'); g.addColorStop(0.25, t.color); g.addColorStop(1, t.dark);
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 1.5; ctx.stroke();
+  /* 肚子 */
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  ctx.beginPath(); ctx.ellipse(r * 0.1, r * 0.45, r * 0.5, r * 0.35, 0, 0, Math.PI * 2); ctx.fill();
+  /* 喙 */
+  ctx.fillStyle = '#f39c12';
+  ctx.beginPath(); ctx.moveTo(r * 0.75, -r * 0.1); ctx.lineTo(r * 1.35, r * 0.12); ctx.lineTo(r * 0.75, r * 0.32); ctx.closePath(); ctx.fill();
+  /* 眼睛 + 怒眉 */
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(r * 0.28, -r * 0.32, r * 0.26, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#2d3436';
+  ctx.beginPath(); ctx.arc(r * 0.34, -r * 0.3, r * 0.12, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#2d3436'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(r * 0.02, -r * 0.62); ctx.lineTo(r * 0.58, -r * 0.42); ctx.stroke();
+  /* 头顶毛 */
+  ctx.strokeStyle = t.dark; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(-r * 0.1, -r * 0.9); ctx.lineTo(-r * 0.05, -r * 1.25); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(r * 0.15, -r * 0.88); ctx.lineTo(r * 0.35, -r * 1.2); ctx.stroke();
+  ctx.restore();
+}
+function drawPig(pg) {
+  ctx.save();
+  ctx.translate(pg.x, pg.y);
+  if (pg.hit > 0) { ctx.globalAlpha = 0.6 + 0.4 * Math.sin(pg.hit * 30); }
+  var g = ctx.createRadialGradient(-5, -6, 3, 0, 0, 20);
+  g.addColorStop(0, '#a9dfbf'); g.addColorStop(0.4, '#58d68d'); g.addColorStop(1, '#229954');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(0, 0, pg.r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.3)'; ctx.lineWidth = 1.5; ctx.stroke();
+  /* 耳朵 */
+  ctx.fillStyle = '#229954';
+  ctx.beginPath(); ctx.moveTo(-11, -11); ctx.lineTo(-7, -20); ctx.lineTo(-2, -12); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(11, -11); ctx.lineTo(7, -20); ctx.lineTo(2, -12); ctx.closePath(); ctx.fill();
+  /* 鼻子 */
+  ctx.fillStyle = '#7ee2a8';
+  ctx.beginPath(); ctx.ellipse(0, 2, 7, 5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#145a32';
+  ctx.beginPath(); ctx.arc(-2.5, 2, 1.4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(2.5, 2, 1.4, 0, Math.PI * 2); ctx.fill();
+  /* 眼睛 */
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(-6, -6, 3.4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(6, -6, 3.4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#2d3436';
+  ctx.beginPath(); ctx.arc(-5.4, -6, 1.6, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(6.6, -6, 1.6, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+function drawBlock(bl) {
+  var m = MAT[bl.mat];
+  ctx.save();
+  ctx.fillStyle = m.color;
+  ctx.fillRect(bl.x, bl.y, bl.w, bl.h);
+  ctx.strokeStyle = m.dark; ctx.lineWidth = 2; ctx.strokeRect(bl.x + 1, bl.y + 1, bl.w - 2, bl.h - 2);
+  if (bl.mat === 'wood') {
+    ctx.strokeStyle = 'rgba(0,0,0,.18)'; ctx.lineWidth = 1.5;
+    var vertical = bl.h > bl.w;
+    for (var i = 1; i <= 2; i++) {
+      ctx.beginPath();
+      if (vertical) { ctx.moveTo(bl.x + bl.w * i / 3, bl.y + 3); ctx.lineTo(bl.x + bl.w * i / 3, bl.y + bl.h - 3); }
+      else { ctx.moveTo(bl.x + 3, bl.y + bl.h * i / 3); ctx.lineTo(bl.x + bl.w - 3, bl.y + bl.h * i / 3); }
+      ctx.stroke();
+    }
+  } else if (bl.mat === 'glass') {
+    ctx.fillStyle = 'rgba(255,255,255,.45)';
+    ctx.fillRect(bl.x + 3, bl.y + 3, bl.w - 6, bl.h * 0.35);
+  } else if (bl.mat === 'stone') {
+    ctx.fillStyle = 'rgba(0,0,0,.15)';
+    ctx.fillRect(bl.x + 3, bl.y + 3, bl.w - 6, 4);
+    if (bl.hp === 1) { /* 石头裂了 */
+      ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(bl.x + bl.w / 2, bl.y); ctx.lineTo(bl.x + bl.w / 2 - 4, bl.y + bl.h / 2); ctx.lineTo(bl.x + bl.w / 2 + 3, bl.y + bl.h); ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+function drawSlingshot() {
+  ctx.save();
+  ctx.lineCap = 'round';
+  /* 后叉 */
+  ctx.strokeStyle = '#6e4a1f'; ctx.lineWidth = 9;
+  ctx.beginPath(); ctx.moveTo(ANCHOR.x, GROUND_Y); ctx.lineTo(ANCHOR.x - 4, ANCHOR.y + 26); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ANCHOR.x - 4, ANCHOR.y + 26); ctx.lineTo(ANCHOR.x - 16, ANCHOR.y - 6); ctx.stroke();
+  /* 前叉 */
+  ctx.strokeStyle = '#8a5a2b'; ctx.lineWidth = 9;
+  ctx.beginPath(); ctx.moveTo(ANCHOR.x, GROUND_Y); ctx.lineTo(ANCHOR.x + 2, ANCHOR.y + 26); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ANCHOR.x + 2, ANCHOR.y + 26); ctx.lineTo(ANCHOR.x + 14, ANCHOR.y - 2); ctx.stroke();
+  ctx.restore();
+}
+function drawRubber() {
+  if (!state.pull) return;
+  var p = slingBirdPos();
+  ctx.save();
+  ctx.strokeStyle = '#2d3436'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(ANCHOR.x - 16, ANCHOR.y - 6); ctx.lineTo(p.x, p.y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ANCHOR.x + 14, ANCHOR.y - 2); ctx.lineTo(p.x, p.y); ctx.stroke();
+  /* 弹道预览 */
+  var vx = (ANCHOR.x - p.x) * POWER, vy = (ANCHOR.y - p.y) * POWER;
+  var tx = p.x, ty = p.y, tvx = vx, tvy = vy;
+  ctx.fillStyle = 'rgba(255,255,255,.9)';
+  for (var i = 0; i < 22; i++) {
+    tvy += GRAV * (1 / 30);
+    tx += tvx * (1 / 30); ty += tvy * (1 / 30);
+    if (ty > GROUND_Y) break;
+    if (i % 2 === 0) { ctx.beginPath(); ctx.arc(tx, ty, 3.5, 0, Math.PI * 2); ctx.fill(); }
+  }
+  ctx.restore();
+}
+function draw() {
+  ctx.save();
+  if (state.shake > 0) ctx.translate((Math.random() - 0.5) * state.shake, (Math.random() - 0.5) * state.shake);
+  /* 天空 */
+  var sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, '#6ec1e8'); sky.addColorStop(0.6, '#a5dcf0'); sky.addColorStop(0.92, '#d8f3dc'); sky.addColorStop(1, '#b7e4c7');
+  ctx.fillStyle = sky; ctx.fillRect(-10, -10, W + 20, H + 20);
+  /* 太阳 */
+  ctx.fillStyle = '#fde68a';
+  ctx.beginPath(); ctx.arc(400, 78, 34, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fbbf24';
+  ctx.beginPath(); ctx.arc(400, 78, 26, 0, Math.PI * 2); ctx.fill();
+  /* 云 */
+  ctx.fillStyle = 'rgba(255,255,255,.92)';
+  state.clouds.forEach(function (c) {
+    ctx.beginPath();
+    ctx.ellipse(c.x, c.y, 34 * c.s, 15 * c.s, 0, 0, Math.PI * 2);
+    ctx.ellipse(c.x + 22 * c.s, c.y + 4 * c.s, 24 * c.s, 12 * c.s, 0, 0, Math.PI * 2);
+    ctx.ellipse(c.x - 24 * c.s, c.y + 5 * c.s, 20 * c.s, 11 * c.s, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  /* 远山 */
+  ctx.fillStyle = '#7fb069';
+  ctx.beginPath(); ctx.moveTo(0, GROUND_Y); ctx.lineTo(0, 560); ctx.quadraticCurveTo(120, 470, 240, 560); ctx.quadraticCurveTo(360, 480, 480, 560); ctx.lineTo(480, GROUND_Y); ctx.closePath(); ctx.fill();
+  /* 草地 */
+  ctx.fillStyle = '#74c69d'; ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+  ctx.fillStyle = '#52b788'; ctx.fillRect(0, GROUND_Y, W, 8);
+  ctx.fillStyle = '#40916c';
+  for (var gx = 12; gx < W; gx += 34) { ctx.beginPath(); ctx.moveTo(gx, GROUND_Y + 12); ctx.lineTo(gx + 4, GROUND_Y + 22); ctx.lineTo(gx + 8, GROUND_Y + 12); ctx.closePath(); ctx.fill(); }
+
+  drawSlingshot();
+  drawRubber();
+  state.blocks.forEach(drawBlock);
+  state.pigs.forEach(function (pg) { if (pg.alive) drawPig(pg); });
+  /* 待发射的小鸟 */
+  if (state.phase === 'aim' && state.birdIdx < state.birdsQueue.length) {
+    var bp = slingBirdPos();
+    drawBirdShape(bp.x, bp.y, BIRD_TYPES[currentBirdType()].r, currentBirdType(), state.pull ? Math.atan2(-(ANCHOR.y - bp.y), -(ANCHOR.x - bp.x)) * 0.2 : 0);
+  }
+  /* 飞行中的鸟 */
+  if (state.bird && state.bird.alive) {
+    var ang = Math.atan2(state.bird.vy, state.bird.vx);
+    drawBirdShape(state.bird.x, state.bird.y, state.bird.r, state.bird.type, Math.max(-0.6, Math.min(0.6, ang * 0.5)));
+  }
+  state.extraBirds.forEach(function (b) {
+    if (b.alive) drawBirdShape(b.x, b.y, b.r, b.type, Math.atan2(b.vy, b.vx) * 0.4);
+  });
+  /* 粒子 */
+  state.particles.forEach(function (p) {
+    ctx.globalAlpha = Math.max(0, p.life);
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+/* ---------- 主循环 ---------- */
+var lastT = 0;
+function loop(t) {
+  var dt = Math.min(0.033, (t - lastT) / 1000 || 0.016);
+  lastT = t;
+  step(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+/* ---------- 输入 ---------- */
+function toWorld(e) {
+  var r = cv.getBoundingClientRect();
+  var cx = (e.touches ? e.touches[0].clientX : e.clientX);
+  var cy = (e.touches ? e.touches[0].clientY : e.clientY);
+  return { x: (cx - r.left) * (W / r.width), y: (cy - r.top) * (H / r.height) };
+}
+function nearBird(p) {
+  var bp = slingBirdPos();
+  return Math.hypot(p.x - bp.x, p.y - bp.y) < 60;
+}
+cv.addEventListener('pointerdown', function (e) {
+  e.preventDefault();
+  if (state.phase === 'aim') {
+    var p = toWorld(e);
+    if (nearBird(p)) {
+      state.pull = { dx: 0, dy: 0 };
+      cv.classList.add('aiming');
+      cv.setPointerCapture(e.pointerId);
+    }
+  } else if (state.phase === 'flying') {
+    useAbility();
+  }
+});
+cv.addEventListener('pointermove', function (e) {
+  if (!state.pull) return;
+  e.preventDefault();
+  var p = toWorld(e);
+  var dx = p.x - ANCHOR.x, dy = p.y - ANCHOR.y;
+  var d = Math.hypot(dx, dy);
+  if (d > MAX_PULL) { dx = dx / d * MAX_PULL; dy = dy / d * MAX_PULL; }
+  state.pull = { dx: dx, dy: dy };
+});
+function endPull() {
+  if (!state.pull) return;
+  cv.classList.remove('aiming');
+  launch();
+}
+cv.addEventListener('pointerup', endPull);
+cv.addEventListener('pointercancel', function () { state.pull = null; cv.classList.remove('aiming'); });
+document.addEventListener('keydown', function (e) {
+  if (e.code === 'Space') { e.preventDefault(); if (state.phase === 'flying') useAbility(); }
+  if (e.key === 'r' || e.key === 'R') loadLevel(state.levelIdx);
+});
+
+/* ---------- 界面 ---------- */
+function renderHud() {
+  hudScore.textContent = state.score;
+  hudLevel.textContent = LEVELS[state.levelIdx].name;
+  hudBest.textContent = bestFor(state.levelIdx);
+}
+function renderBirds() {
+  birdsEl.innerHTML = '';
+  state.birdsQueue.forEach(function (t, i) {
+    var d = document.createElement('div');
+    d.className = 'birdslot' + (i < state.birdIdx ? ' used' : '') + (i === state.birdIdx && state.phase === 'aim' ? ' next' : '');
+    d.textContent = BIRD_TYPES[t].emoji;
+    birdsEl.appendChild(d);
+  });
+}
+function renderLevels() {
+  levelsEl.innerHTML = '';
+  LEVELS.forEach(function (L, i) {
+    var b = document.createElement('button');
+    var st = starsFor(i);
+    b.textContent = st > 0 ? '★'.repeat(st) : (i + 1);
+    b.title = L.name + (st > 0 ? ' · ' + st + ' 星' : '');
+    b.className = (st > 0 ? 'done ' : '') + (i === state.levelIdx ? 'cur ' : '') + (!unlocked(i) ? 'locked' : '');
+    b.disabled = !unlocked(i);
+    b.addEventListener('click', function () { loadLevel(i); });
+    levelsEl.appendChild(b);
+  });
+}
+document.getElementById('btnRestart').addEventListener('click', function () { loadLevel(state.levelIdx); });
+document.getElementById('btnSound').addEventListener('click', function () {
+  state.sound = !state.sound;
+  this.textContent = state.sound ? '🔊 音效：开' : '🔇 音效：关';
+});
+window.__sling = {
+  state: state, LEVELS: LEVELS,
+  play: function (i) { loadLevel(i); },
+  replay: function () { loadLevel(state.levelIdx); },
+  showLevels: function () { overlay.classList.remove('show'); document.getElementById('levels').scrollIntoView({ behavior: 'smooth', block: 'center' }); },
+  launchTest: function (dx, dy) { state.pull = { dx: dx, dy: dy }; launch(); },
+  useAbility: useAbility,
+  step: step
+};
+
+/* ---------- 启动 ---------- */
+loadLevel(0);
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
